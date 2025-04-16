@@ -3,17 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Whack-Hasina Game</title>
+    <title>Whack-A-Mole Game</title>
     <style>
+        :root {
+            --primary-color: #ff4444;
+            --secondary-color: #ffeb3b;
+            --background-color: #1a1a1a;
+        }
+
         body {
             text-align: center;
-            background-color: black;
-            color: red;
-            font-family: Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--primary-color);
+            font-family: 'Press Start 2P', cursive;
             background-image: url('background.jpg');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+
+        h1 {
+            font-size: 3em;
+            text-shadow: 3px 3px 0 #000;
+            margin: 20px 0;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from {
+                text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px var(--primary-color);
+            }
+            to {
+                text-shadow: 0 0 10px #fff, 0 0 20px #fff, 0 0 30px var(--primary-color);
+            }
         }
 
         .game-container {
@@ -21,7 +52,10 @@
             grid-template-columns: repeat(3, 150px);
             gap: 15px;
             justify-content: center;
-            margin-top: 50px;
+            margin-top: 20px;
+            perspective: 1000px;
+            position: relative;
+            z-index: 1;
         }
 
         .hole {
@@ -30,6 +64,12 @@
             background: url('hole.png') no-repeat center center/cover;
             position: relative;
             cursor: pointer;
+            transform-style: preserve-3d;
+            transition: transform 0.3s ease;
+        }
+
+        .hole:hover {
+            transform: scale(1.05);
         }
 
         .mole {
@@ -39,7 +79,18 @@
             top: 10px;
             left: 25px;
             display: none;
-            transition: transform 0.1s ease-in-out;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            transform-origin: bottom center;
+        }
+
+        .mole.show {
+            animation: popUp 0.5s ease-out;
+        }
+
+        @keyframes popUp {
+            0% { transform: translateY(100%) scale(0.5); }
+            50% { transform: translateY(-10%) scale(1.1); }
+            100% { transform: translateY(0) scale(1); }
         }
 
         .blood {
@@ -49,32 +100,59 @@
             top: 10px;
             left: 25px;
             display: none;
+            animation: splat 0.3s ease-out;
+        }
+
+        @keyframes splat {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.8; }
         }
 
         .hammer {
             width: 120px;
             height: 120px;
-            position: absolute;
+            position: fixed;
             display: none;
             pointer-events: none;
             transition: transform 0.2s ease;
+            filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+            z-index: 3;
         }
 
         #score-container {
-            font-size: 30px;
-            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 20px 0;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(255, 68, 68, 0.3);
+        }
+
+        #score, #target-score, #timer {
+            font-size: 24px;
             color: white;
+            text-shadow: 2px 2px 0 #000;
         }
 
-        #score {
-            margin-right: 10px;
+        #timer {
+            color: var(--secondary-color);
         }
 
-        #target-score {
-            margin-left: 10px;
+        .particle {
+            position: fixed;
+            pointer-events: none;
+            animation: particle 0.6s ease-out forwards;
+            z-index: 2;
         }
 
-        /* Win popup */
+        @keyframes particle {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+        }
+
         #win-popup {
             display: none;
             position: fixed;
@@ -82,32 +160,61 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.7); /* Transparent black */
+            background-color: rgba(0, 0, 0, 0.9);
             color: white;
             text-align: center;
             padding-top: 20%;
             z-index: 999;
+            animation: fadeIn 0.5s ease-out;
+            overflow: hidden;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
         #win-message {
-            font-size: 30px;
-        }
-
-        #target-score-text {
-            font-size: 20px;
+            font-size: 48px;
+            color: var(--secondary-color);
+            text-shadow: 0 0 20px var(--secondary-color);
+            margin-bottom: 20px;
         }
 
         #play-again {
-            font-size: 20px;
-            padding: 10px;
-            background-color: blue;
+            font-size: 24px;
+            padding: 15px 30px;
+            background: linear-gradient(45deg, var(--primary-color), #ff6b6b);
             color: white;
             border: none;
+            border-radius: 25px;
             cursor: pointer;
             margin-top: 20px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            font-family: 'Press Start 2P', cursive;
         }
 
-        /* Mobile responsiveness */
+        #play-again:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px var(--primary-color);
+        }
+
+        .power-up {
+            position: fixed;
+            width: 40px;
+            height: 40px;
+            background: var(--secondary-color);
+            border-radius: 50%;
+            display: none;
+            animation: float 2s ease-in-out infinite;
+            z-index: 2;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
         @media screen and (max-width: 768px) {
             .game-container {
                 grid-template-columns: repeat(3, 120px);
@@ -132,31 +239,712 @@
             }
 
             #score-container {
-                font-size: 20px;
+                flex-direction: column;
+                gap: 10px;
             }
 
-            #score, #target-score {
-                font-size: 18px;
+            h1 {
+                font-size: 2em;
             }
         }
 
-        @keyframes shake {
-            0% { transform: translateX(0); }
-            25% { transform: translateX(-10px); }
-            50% { transform: translateX(10px); }
-            75% { transform: translateX(-10px); }
-            100% { transform: translateX(0); }
+        .difficulty-selector {
+            margin: 20px 0;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .difficulty-btn {
+            padding: 10px 20px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 14px;
+            background: linear-gradient(45deg, var(--primary-color), #ff6b6b);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .difficulty-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 15px var(--primary-color);
+        }
+
+        .difficulty-btn.active {
+            background: linear-gradient(45deg, var(--secondary-color), #ffd700);
+            box-shadow: 0 0 20px var(--secondary-color);
+        }
+
+        .combo-text {
+            position: absolute;
+            color: var(--secondary-color);
+            font-size: 24px;
+            text-shadow: 0 0 10px var(--secondary-color);
+            pointer-events: none;
+            animation: comboFloat 1s ease-out forwards;
+        }
+
+        @keyframes comboFloat {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-50px) scale(1.5); opacity: 0; }
+        }
+
+        .high-scores {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .high-scores h3 {
+            margin: 0 0 10px 0;
+            color: var(--secondary-color);
+        }
+
+        .high-scores-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .high-scores-list li {
+            margin: 5px 0;
+        }
+
+        .mole.golden {
+            filter: hue-rotate(45deg) brightness(1.2);
+        }
+
+        .mole.bomb {
+            filter: grayscale(1) brightness(0.8);
+        }
+
+        .settings-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            color: white;
+            font-size: 20px;
+            transition: transform 0.2s ease;
+        }
+
+        .settings-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .settings-panel {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            color: white;
+            z-index: 1000;
+        }
+
+        .settings-panel h3 {
+            margin: 0 0 15px 0;
+            color: var(--secondary-color);
+        }
+
+        .settings-panel label {
+            display: block;
+            margin: 10px 0;
+        }
+
+        .settings-panel input[type="range"] {
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        .menu-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            overflow: hidden;
+        }
+
+        .menu-title {
+            font-size: 4em;
+            color: var(--primary-color);
+            text-shadow: 0 0 20px var(--primary-color);
+            margin-bottom: 50px;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .menu-button {
+            padding: 20px 40px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 24px;
+            background: linear-gradient(45deg, var(--primary-color), #ff6b6b);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .menu-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px var(--primary-color);
+        }
+
+        .custom-mole-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1001;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: auto;
+        }
+
+        .image-upload-container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .image-preview {
+            max-width: 300px;
+            max-height: 300px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .crop-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .crop-area {
+            position: absolute;
+            border: 2px solid var(--secondary-color);
+            box-shadow: 0 0 10px var(--secondary-color);
+            cursor: move;
+        }
+
+        .crop-handle {
+            width: 10px;
+            height: 10px;
+            background: var(--secondary-color);
+            position: absolute;
+        }
+
+        .crop-handle.top-left { top: -5px; left: -5px; cursor: nw-resize; }
+        .crop-handle.top-right { top: -5px; right: -5px; cursor: ne-resize; }
+        .crop-handle.bottom-left { bottom: -5px; left: -5px; cursor: sw-resize; }
+        .crop-handle.bottom-right { bottom: -5px; right: -5px; cursor: se-resize; }
+
+        .action-buttons {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .action-button {
+            padding: 10px 20px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 14px;
+            background: linear-gradient(45deg, var(--primary-color), #ff6b6b);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .action-button:hover {
+            transform: scale(1.1);
+        }
+
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+        }
+
+        .level-bar {
+            width: 200px;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            margin: 10px auto;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .level-progress {
+            height: 100%;
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            transition: width 0.3s ease;
+        }
+
+        .achievement-popup {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            animation: slideIn 0.5s ease-out;
+            z-index: 1000;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+
+        .power-up-indicator {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .power-up-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--secondary-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            opacity: 0.5;
+        }
+
+        .power-up-icon.active {
+            opacity: 1;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .coins-display {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 10px;
+            color: gold;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .shop-button {
+            position: fixed;
+            top: 70px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.2s;
+            z-index: 1000;
+        }
+
+        .shop-button:hover {
+            transform: scale(1.1);
+        }
+
+        .shop-panel {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            color: white;
+            z-index: 1002;
+            max-width: 80%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .skin-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            margin: 5px 0;
+        }
+
+        .skin-preview {
+            width: 50px;
+            height: 50px;
+            border-radius: 5px;
+        }
+
+        .daily-challenge {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            max-width: 300px;
+        }
+
+        .special-event {
+            display: none; /* Hide by default */
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            color: white;
+            text-align: center;
+            z-index: 1002;
+            box-shadow: 0 0 20px rgba(255, 68, 68, 0.5);
+            border: 2px solid var(--secondary-color);
+            min-width: 300px;
+        }
+
+        .special-event.active {
+            display: block;
+            animation: eventPulse 2s infinite;
+        }
+
+        @keyframes eventPulse {
+            0% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.05); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+
+        .event-timer {
+            font-size: 24px;
+            color: var(--secondary-color);
+            margin: 10px 0;
+            text-shadow: 0 0 10px var(--secondary-color);
+        }
+
+        .shop-category {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .upgrade-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            margin: 5px 0;
+        }
+
+        .upgrade-info {
+            flex: 1;
+        }
+
+        .upgrade-level {
+            color: var(--secondary-color);
+            font-size: 0.8em;
+            margin-top: 5px;
+        }
+
+        .upgrade-button {
+            padding: 5px 15px;
+            background: var(--primary-color);
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .upgrade-button:hover {
+            transform: scale(1.05);
+        }
+
+        .upgrade-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        .coin-multiplier {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 10px;
+            color: gold;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: glow 2s infinite;
+        }
+
+        .boss-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 300px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            display: none;
+            z-index: 1003;
+            border: 3px solid var(--primary-color);
+            box-shadow: 0 0 30px var(--primary-color);
+        }
+
+        .boss-health {
+            width: 100%;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .boss-health-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0000, #ff6b6b);
+            width: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .mini-game-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            color: white;
+            z-index: 1003;
+            display: none;
+            text-align: center;
+        }
+
+        .mini-game-target {
+            width: 50px;
+            height: 50px;
+            background: var(--secondary-color);
+            border-radius: 50%;
+            position: absolute;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .mini-game-target:hover {
+            transform: scale(1.1);
+        }
+
+        .prestige-button {
+            position: fixed;
+            top: 120px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 10px;
+            color: gold;
+            cursor: pointer;
+            transition: transform 0.2s;
+            z-index: 1000;
+        }
+
+        .prestige-button:hover {
+            transform: scale(1.1);
+        }
+
+        .prestige-panel {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            color: white;
+            z-index: 1002;
+            text-align: center;
+        }
+
+        .prestige-benefits {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .prestige-benefit {
+            margin: 10px 0;
+            color: var(--secondary-color);
+        }
+
+        .boss-reward {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            color: gold;
+            z-index: 1003;
+            display: none;
+            text-align: center;
+            animation: rewardPulse 1s infinite;
+        }
+
+        @keyframes rewardPulse {
+            0% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+            100% { transform: translate(-50%, -50%) scale(1); }
         }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 <body>
+    <div class="menu-container" id="menuContainer">
+        <h1 class="menu-title">WHACK-A-MOLE</h1>
+        <div class="menu-buttons">
+            <button class="menu-button" onclick="startGame('hasina')">Whack Hasina</button>
+            <button class="menu-button" onclick="showCustomMole()">Whack Custom Mole</button>
+        </div>
+    </div>
+
+    <div class="custom-mole-container" id="customMoleContainer">
+        <button class="back-button" onclick="hideCustomMole()">← Back</button>
+        <div class="image-upload-container">
+            <h2>Upload Your Mole Image</h2>
+            <input type="file" id="imageUpload" accept="image/*" onchange="handleImageUpload(event)">
+            <img id="imagePreview" class="image-preview">
+            <div class="crop-container" id="cropContainer">
+                <div class="crop-area" id="cropArea">
+                    <div class="crop-handle top-left"></div>
+                    <div class="crop-handle top-right"></div>
+                    <div class="crop-handle bottom-left"></div>
+                    <div class="crop-handle bottom-right"></div>
+                </div>
+            </div>
+            <div class="action-buttons">
+                <button class="action-button" onclick="processImage()">Process Image</button>
+                <button class="action-button" onclick="startGame('custom')">Start Game</button>
+            </div>
+        </div>
+    </div>
+
+    <button class="settings-btn" id="settingsBtn">⚙️</button>
+    <div class="settings-panel" id="settingsPanel">
+        <h3>Settings</h3>
+        <label>
+            Sound Effects
+            <input type="range" id="soundVolume" min="0" max="100" value="50">
+        </label>
+        <label>
+            Background Music
+            <input type="range" id="musicVolume" min="0" max="100" value="30">
+        </label>
+    </div>
+
+    <div class="high-scores">
+        <h3>High Scores</h3>
+        <ul class="high-scores-list" id="highScoresList"></ul>
+    </div>
+
     <h1>WHACK HASINA!</h1>
+    
+    <div class="difficulty-selector">
+        <button class="difficulty-btn" data-difficulty="easy">Easy</button>
+        <button class="difficulty-btn" data-difficulty="medium">Medium</button>
+        <button class="difficulty-btn" data-difficulty="hard">Hard</button>
+    </div>
+
     <div id="score-container">
         <div id="score">Your Score: 0</div>
         <div id="target-score">Target Score: 0</div>
+        <div id="timer">Time: 60</div>
+        <div id="combo">Combo: x1</div>
+        <div id="level">Level: 1</div>
+        <div class="level-bar">
+            <div class="level-progress" id="levelProgress"></div>
+        </div>
     </div>
     <div class="game-container" id="gameBoard"></div>
+    
     <audio id="hitSound" src="hit.mp3"></audio>
+    <audio id="bgMusic" src="background.mp3" loop></audio>
+    <audio id="comboSound" src="combo.mp3"></audio>
 
     <div id="win-popup">
         <div id="win-message">You Win!!!</div>
@@ -164,34 +952,277 @@
         <button id="play-again">Play Again</button>
     </div>
 
+    <div class="power-up-indicator">
+        <div class="power-up-icon" id="slowMotionIcon">⏱️</div>
+        <div class="power-up-icon" id="doublePointsIcon">2️⃣</div>
+        <div class="power-up-icon" id="goldenRushIcon">⭐</div>
+    </div>
+
+    <div class="coins-display">🪙 0</div>
+    <div class="shop-button" onclick="showShop()">🛍️ Shop</div>
+    <div class="shop-panel">
+        <h2>Shop</h2>
+        <div id="skins-container"></div>
+        <button onclick="this.parentElement.style.display='none'" class="action-button">Close</button>
+    </div>
+
+    <div class="daily-challenge">
+        <h3>Daily Challenges</h3>
+        <div id="daily-challenges-container"></div>
+    </div>
+
+    <div class="special-event">
+        <h2>Special Event!</h2>
+        <div class="event-timer">0s</div>
+    </div>
+
+    <div class="prestige-button" onclick="showPrestigePanel()">⭐ Prestige</div>
+    <div class="prestige-panel">
+        <h2>Prestige System</h2>
+        <div class="prestige-benefits">
+            <div class="prestige-benefit">• Start with 500 coins</div>
+            <div class="prestige-benefit">• 10% faster hammer speed</div>
+            <div class="prestige-benefit">• 15% more golden moles</div>
+            <div class="prestige-benefit">• Unlock special boss battles</div>
+        </div>
+        <button onclick="prestige()" class="action-button">Prestige (Cost: 1000 coins)</button>
+        <button onclick="this.parentElement.style.display='none'" class="action-button">Close</button>
+    </div>
+
+    <div class="boss-container">
+        <h2>Boss Battle!</h2>
+        <div class="boss-health">
+            <div class="boss-health-bar"></div>
+        </div>
+        <div class="boss-timer">30s</div>
+    </div>
+
+    <div class="mini-game-container">
+        <h2>Quick Mini-Game!</h2>
+        <div class="mini-game-area"></div>
+        <div class="mini-game-timer">5s</div>
+    </div>
+
+    <div class="boss-reward">
+        <h2>Boss Defeated!</h2>
+        <div class="reward-amount">+100 coins</div>
+        <div class="reward-item">Special Power-up Unlocked!</div>
+    </div>
+
     <script>
         const gameBoard = document.getElementById('gameBoard');
         const scoreDisplay = document.getElementById('score');
         const targetScoreDisplay = document.getElementById('target-score');
+        const timerDisplay = document.getElementById('timer');
         const hitSound = document.getElementById('hitSound');
         const targetScoreTextSpan = document.getElementById('target-score-text-span');
         let score = 0;
         let targetScore;
         let gamePaused = false;
+        let timeLeft = 60;
+        let gameInterval;
+        let moleInterval;
+        let powerUpActive = false;
+        let moleDisplayTime = 3000;
+        let moleIntervalTime = 2000;
+        let combo = 1;
+        let lastHitTime = 0;
+        let highScores = JSON.parse(localStorage.getItem('highScores')) || [];
+        let currentDifficulty = 'medium';
+        let soundVolume = 0.5;
+        let musicVolume = 0.3;
+        let customMoleImage = null;
+        let level = 1;
+        let experience = 0;
+        let achievements = JSON.parse(localStorage.getItem('achievements')) || [];
+        let powerUps = {
+            slowMotion: false,
+            doublePoints: false,
+            goldenRush: false
+        };
+        let coins = parseInt(localStorage.getItem('coins')) || 0;
+        let skins = JSON.parse(localStorage.getItem('skins')) || ['default'];
+        let currentSkin = localStorage.getItem('currentSkin') || 'default';
+        let dailyChallenges = JSON.parse(localStorage.getItem('dailyChallenges')) || [];
+        let specialEventActive = false;
+        let eventType = null;
+        let eventTimer = null;
+        let upgrades = JSON.parse(localStorage.getItem('upgrades')) || {
+            hammerSpeed: 1,
+            moleSlowdown: 1,
+            goldenChance: 1,
+            powerUpDuration: 1
+        };
+        let prestigeLevel = parseInt(localStorage.getItem('prestigeLevel')) || 0;
+        let bossHealth = 100;
+        let bossActive = false;
+        let miniGameActive = false;
+        let prestigeMultiplier = 1 + (prestigeLevel * 0.1);
 
         const hammer = document.createElement('img');
         hammer.src = 'hammer.png'; 
         hammer.classList.add('hammer');
         document.body.appendChild(hammer); 
 
-        window.onload = () => {
+        const bgMusic = document.getElementById('bgMusic');
+        const comboSound = document.getElementById('comboSound');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsPanel = document.getElementById('settingsPanel');
+        const soundVolumeSlider = document.getElementById('soundVolume');
+        const musicVolumeSlider = document.getElementById('musicVolume');
+
+        // Initialize settings
+        soundVolumeSlider.value = soundVolume * 100;
+        musicVolumeSlider.value = musicVolume * 100;
+
+        // Settings event listeners
+        settingsBtn.addEventListener('click', () => {
+            settingsPanel.style.display = settingsPanel.style.display === 'none' ? 'block' : 'none';
+        });
+
+        soundVolumeSlider.addEventListener('input', (e) => {
+            soundVolume = e.target.value / 100;
+            hitSound.volume = soundVolume;
+            comboSound.volume = soundVolume;
+        });
+
+        musicVolumeSlider.addEventListener('input', (e) => {
+            musicVolume = e.target.value / 100;
+            bgMusic.volume = musicVolume;
+        });
+
+        // Difficulty buttons
+        document.querySelectorAll('.difficulty-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentDifficulty = btn.dataset.difficulty;
+                updateDifficulty();
+            });
+        });
+
+        function updateDifficulty() {
+            switch(currentDifficulty) {
+                case 'easy':
+                    moleIntervalTime = 2500;  // 2.5 seconds between moles
+                    moleDisplayTime = 4000;   // 4 seconds display time
+                    break;
+                case 'medium':
+                    moleIntervalTime = 2000;  // 2 seconds between moles
+                    moleDisplayTime = 3000;   // 3 seconds display time
+                    break;
+                case 'hard':
+                    moleIntervalTime = 1500;  // 1.5 seconds between moles
+                    moleDisplayTime = 2500;   // 2.5 seconds display time
+                    break;
+            }
+            if (!gamePaused) {
+                clearInterval(moleInterval);
+                startMoleInterval();
+            }
+        }
+
+        function showComboText(x, y, combo) {
+            const comboText = document.createElement('div');
+            comboText.classList.add('combo-text');
+            comboText.textContent = `${combo}x COMBO!`;
+            comboText.style.left = `${x}px`;
+            comboText.style.top = `${y}px`;
+            document.body.appendChild(comboText);
+            setTimeout(() => comboText.remove(), 1000);
+        }
+
+        function updateHighScores() {
+            highScores.push(score);
+            highScores.sort((a, b) => b - a);
+            highScores = highScores.slice(0, 5);
+            localStorage.setItem('highScores', JSON.stringify(highScores));
+            
+            const highScoresList = document.getElementById('highScoresList');
+            highScoresList.innerHTML = highScores
+                .map((score, index) => `<li>${index + 1}. ${score}</li>`)
+                .join('');
+        }
+
+        function startGame(mode) {
+            if (mode === 'custom' && !customMoleImage) {
+                alert('Please upload and process an image first!');
+                return;
+            }
+
+            document.getElementById('menuContainer').style.display = 'none';
+            document.getElementById('customMoleContainer').style.display = 'none';
+            
             targetScore = parseInt(prompt("Enter the score you want to play for:"));
             targetScoreDisplay.textContent = `Target Score: ${targetScore}`;
             targetScoreTextSpan.textContent = targetScore;
-        };
+            updateHighScores();
+            
+            // Set default difficulty to medium
+            document.querySelector('.difficulty-btn[data-difficulty="medium"]').classList.add('active');
+            currentDifficulty = 'medium';
+            updateDifficulty();
+            
+            initializeGame();
+            bgMusic.volume = musicVolume;
+            bgMusic.play();
+
+            // Initialize daily challenges
+            initializeDailyChallenges();
+            
+            // Start special event timer
+            setInterval(startSpecialEvent, 30000); // Check for special events every 30 seconds
+            applyUpgrades();
+
+            // Start boss battle timer
+            setInterval(startBossBattle, 60000); // Check for boss battle every minute
+        }
+
+        function initializeGame() {
+            score = 0;
+            timeLeft = 60;
+            gamePaused = false;
+            combo = 1;
+            lastHitTime = 0;
+            scoreDisplay.textContent = `Your Score: ${score}`;
+            timerDisplay.textContent = `Time: ${timeLeft}`;
+            document.getElementById('combo').textContent = `Combo: x${combo}`;
+            createHoles();
+            startMoleInterval();
+            startTimer();
+        }
+
+        function startTimer() {
+            gameInterval = setInterval(() => {
+                if (!gamePaused) {
+                    timeLeft--;
+                    timerDisplay.textContent = `Time: ${timeLeft}`;
+                    if (timeLeft <= 0) {
+                        endGame();
+                    }
+                }
+            }, 1000);
+        }
+
+        function startMoleInterval() {
+            moleInterval = setInterval(() => {
+                if (!gamePaused) {
+                    randomMole();
+                    if (Math.random() < 0.1) { // 10% chance to spawn power-up
+                        spawnPowerUp();
+                    }
+                }
+            }, moleIntervalTime);
+        }
 
         function createHoles() {
+            gameBoard.innerHTML = '';
             for (let i = 0; i < 9; i++) {
                 const hole = document.createElement('div');
                 hole.classList.add('hole');
 
                 const mole = document.createElement('img');
-                mole.src = 'mole.png'; 
+                mole.src = customMoleImage || 'mole.png'; // Use custom mole if available
                 mole.classList.add('mole');
 
                 const blood = document.createElement('img');
@@ -205,7 +1236,7 @@
         }
 
         function randomMole() {
-            if (gamePaused) return; 
+            if (gamePaused) return;
 
             const holes = document.querySelectorAll('.hole');
             holes.forEach(hole => {
@@ -213,16 +1244,133 @@
                 const blood = hole.querySelector('.blood');
                 mole.style.display = 'none';
                 blood.style.display = 'none';
+                mole.classList.remove('golden', 'bomb');
             });
 
             const index = Math.floor(Math.random() * holes.length);
             const mole = holes[index].querySelector('.mole');
-            const blood = holes[index].querySelector('.blood');
-
+            
+            const random = Math.random();
+            if (powerUps.goldenRush || random < 0.1) {
+                mole.classList.add('golden');
+            } else if (random < 0.2) {
+                mole.classList.add('bomb');
+            }
+            
             mole.style.display = 'block';
-            blood.style.display = 'none'; 
+            mole.classList.add('show');
 
-            setTimeout(() => mole.style.display = 'none', 2000); 
+            const moleTimeout = setTimeout(() => {
+                if (mole.style.display !== 'none') {
+                    mole.style.display = 'none';
+                    mole.classList.remove('show');
+                    combo = 1;
+                    document.getElementById('combo').textContent = `Combo: x${combo}`;
+                }
+            }, powerUpActive ? moleDisplayTime * 1.5 : moleDisplayTime);
+        }
+
+        function spawnPowerUp() {
+            const powerUpTypes = [
+                'slowMotion',
+                'doublePoints',
+                'goldenRush',
+                'shield',
+                'timeFreeze',
+                'magnet'
+            ];
+            const type = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+            
+            const powerUp = document.createElement('div');
+            powerUp.classList.add('power-up');
+            powerUp.style.left = `${Math.random() * (window.innerWidth - 40)}px`;
+            powerUp.style.top = `${Math.random() * (window.innerHeight - 40)}px`;
+            powerUp.textContent = type === 'slowMotion' ? '⏱️' : type === 'doublePoints' ? '2️⃣' : type === 'goldenRush' ? '⭐' : type === 'shield' ? '��️' : type === 'timeFreeze' ? '❄️' : '🧲';
+            document.body.appendChild(powerUp);
+
+            setTimeout(() => {
+                powerUp.remove();
+            }, 5000);
+
+            powerUp.addEventListener('click', () => {
+                activatePowerUp(type);
+                powerUp.remove();
+            });
+        }
+
+        function activatePowerUp(type) {
+            const icon = document.getElementById(`${type}Icon`);
+            icon.classList.add('active');
+            
+            switch(type) {
+                case 'slowMotion':
+                    moleDisplayTime *= 1.5;
+                    moleIntervalTime *= 1.5;
+                    break;
+                case 'doublePoints':
+                    powerUps.doublePoints = true;
+                    break;
+                case 'goldenRush':
+                    powerUps.goldenRush = true;
+                    break;
+                case 'shield':
+                    powerUps.shield = true;
+                    break;
+                case 'timeFreeze':
+                    gamePaused = true;
+                    setTimeout(() => gamePaused = false, 5000);
+                    break;
+                case 'magnet':
+                    powerUps.magnet = true;
+                    break;
+            }
+            
+            setTimeout(() => {
+                icon.classList.remove('active');
+                switch(type) {
+                    case 'slowMotion':
+                        moleDisplayTime /= 1.5;
+                        moleIntervalTime /= 1.5;
+                        break;
+                    case 'doublePoints':
+                        powerUps.doublePoints = false;
+                        break;
+                    case 'goldenRush':
+                        powerUps.goldenRush = false;
+                        break;
+                    case 'shield':
+                        powerUps.shield = false;
+                        break;
+                    case 'timeFreeze':
+                        gamePaused = true;
+                        setTimeout(() => gamePaused = false, 5000);
+                        break;
+                    case 'magnet':
+                        powerUps.magnet = false;
+                        break;
+                }
+            }, 10000);
+        }
+
+        function createParticles(x, y) {
+            for (let i = 0; i < 10; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                particle.style.left = `${x}px`;
+                particle.style.top = `${y}px`;
+                particle.style.backgroundColor = powerUpActive ? '#ffeb3b' : '#ff4444';
+                
+                const angle = (Math.random() * 360) * (Math.PI / 180);
+                const velocity = 2 + Math.random() * 3;
+                const tx = Math.cos(angle) * velocity * 50;
+                const ty = Math.sin(angle) * velocity * 50;
+                
+                particle.style.setProperty('--tx', `${tx}px`);
+                particle.style.setProperty('--ty', `${ty}px`);
+                
+                document.body.appendChild(particle);
+                setTimeout(() => particle.remove(), 600);
+            }
         }
 
         function moveHammer(event) {
@@ -247,58 +1395,656 @@
                 const hammerRect = hammer.getBoundingClientRect();
 
                 if (isOverlapping(moleRect, hammerRect)) {
-                    mole.style.display = 'block'; 
-                    const blood = mole.nextElementSibling;
-                    blood.style.display = 'block';
-                    hitSound.play();
-
-                    mole.style.animation = 'shake 0.5s ease-in-out 2';  
-                    setTimeout(() => {
-                        mole.style.animation = ''; 
-                    }, 1000);
-
-                    setTimeout(() => {
-                        blood.style.display = 'none';
-                        mole.style.display = 'none'; 
-                    }, 2000);
-
-                    score++;
-                    scoreDisplay.textContent = `Your Score: ${score}`; 
-
-                    checkWin();
+                    hitMole(mole);
                 }
             });
         }
 
-        function isOverlapping(rect1, rect2) {
-            return !(rect1.right < rect2.left || rect1.left > rect2.right || rect1.bottom < rect2.top || rect1.top > rect2.bottom);
-        }
+        function hitMole(mole) {
+            const hole = mole.parentElement;
+            const blood = hole.querySelector('.blood');
+            const moleRect = mole.getBoundingClientRect();
+            
+            mole.style.display = 'none';
+            blood.style.display = 'block';
+            
+            hitSound.currentTime = 0;
+            hitSound.volume = soundVolume;
+            hitSound.play();
 
-        function checkWin() {
+            const now = Date.now();
+            if (now - lastHitTime < 2000) {
+                combo++;
+                if (combo > 1) {
+                    comboSound.currentTime = 0;
+                    comboSound.volume = soundVolume;
+                    comboSound.play();
+                    showComboText(moleRect.left, moleRect.top, combo);
+                }
+            } else {
+                combo = 1;
+            }
+            lastHitTime = now;
+
+            document.getElementById('combo').textContent = `Combo: x${combo}`;
+            
+            createParticles(
+                moleRect.left + moleRect.width / 2,
+                moleRect.top + moleRect.height / 2
+            );
+            
+            experience += 10 * combo;
+            updateLevel();
+            
+            checkAchievements();
+            
+            let points = 1;
+            if (mole.classList.contains('golden')) {
+                points = powerUps.goldenRush ? 6 : 3;
+            } else if (mole.classList.contains('bomb')) {
+                points = -2;
+            }
+            
+            if (powerUps.doublePoints) {
+                points *= 2;
+            }
+            
+            score += points * combo;
+            scoreDisplay.textContent = `Your Score: ${score}`;
+            
             if (score >= targetScore) {
-                gamePaused = true;  
-                const winPopup = document.getElementById('win-popup');
-                winPopup.style.display = 'block'; 
+                updateHighScores();
+                endGame();
+            }
+
+            // Add coin rewards
+            if (mole.classList.contains('golden')) {
+                coins += 5;
+            } else {
+                coins += 1;
+            }
+            document.querySelector('.coins-display').innerHTML = `🪙 ${coins}`;
+            localStorage.setItem('coins', coins);
+            
+            // Check daily challenges
+            checkDailyChallenges();
+
+            // Check for boss battle
+            if (Math.random() < 0.05) {
+                hitBoss();
+            }
+            
+            // Check for mini-game
+            if (Math.random() < 0.1) {
+                startMiniGame();
             }
         }
 
-        document.getElementById('play-again').addEventListener('click', () => {
-            score = 0;
-            scoreDisplay.textContent = `Your Score: ${score}`;
-            gamePaused = false; 
-            const winPopup = document.getElementById('win-popup');
-            winPopup.style.display = 'none';
-        });
+        function isOverlapping(rect1, rect2) {
+            return !(rect1.right < rect2.left || 
+                    rect1.left > rect2.right || 
+                    rect1.bottom < rect2.top || 
+                    rect1.top > rect2.bottom);
+        }
 
-        createHoles();
-        setInterval(randomMole, 1000); 
+        function endGame() {
+            gamePaused = true;
+            clearInterval(gameInterval);
+            clearInterval(moleInterval);
+            
+            const winPopup = document.getElementById('win-popup');
+            if (score >= targetScore) {
+                winPopup.style.display = 'block';
+                updateHighScores();
+            } else {
+                const gameOverMessage = document.createElement('div');
+                gameOverMessage.style.position = 'fixed';
+                gameOverMessage.style.top = '50%';
+                gameOverMessage.style.left = '50%';
+                gameOverMessage.style.transform = 'translate(-50%, -50%)';
+                gameOverMessage.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+                gameOverMessage.style.padding = '20px';
+                gameOverMessage.style.borderRadius = '15px';
+                gameOverMessage.style.color = 'white';
+                gameOverMessage.style.textAlign = 'center';
+                gameOverMessage.style.zIndex = '1000';
+                
+                gameOverMessage.innerHTML = `
+                    <h2 style="color: var(--primary-color); margin-bottom: 20px;">Game Over!</h2>
+                    <p>Your Score: ${score}</p>
+                    <p>Target Score: ${targetScore}</p>
+                    <button class="action-button" onclick="this.parentElement.remove(); document.getElementById('menuContainer').style.display = 'flex';">Back to Menu</button>
+                `;
+                
+                document.body.appendChild(gameOverMessage);
+            }
+        }
 
         document.addEventListener('mousemove', moveHammer);
-
         document.addEventListener('click', () => {
             rotateHammer();
-            checkHammerCollision(); 
+            checkHammerCollision();
         });
+
+        document.getElementById('play-again').addEventListener('click', () => {
+            document.getElementById('win-popup').style.display = 'none';
+            startGame();
+        });
+
+        function showCustomMole() {
+            document.getElementById('menuContainer').style.display = 'none';
+            document.getElementById('customMoleContainer').style.display = 'flex';
+        }
+
+        function hideCustomMole() {
+            document.getElementById('menuContainer').style.display = 'flex';
+            document.getElementById('customMoleContainer').style.display = 'none';
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('imagePreview');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    document.getElementById('cropContainer').style.display = 'block';
+                    initializeCropArea();
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function initializeCropArea() {
+            const cropArea = document.getElementById('cropArea');
+            const preview = document.getElementById('imagePreview');
+            
+            cropArea.style.width = '150px';
+            cropArea.style.height = '150px';
+            cropArea.style.left = '75px';
+            cropArea.style.top = '75px';
+            
+            let isDragging = false;
+            let currentX;
+            let currentY;
+            let initialX;
+            let initialY;
+            let xOffset = 0;
+            let yOffset = 0;
+
+            cropArea.addEventListener('mousedown', dragStart);
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', dragEnd);
+
+            function dragStart(e) {
+                if (e.target === cropArea || e.target.classList.contains('crop-handle')) {
+                    isDragging = true;
+                    initialX = e.clientX - xOffset;
+                    initialY = e.clientY - yOffset;
+                }
+            }
+
+            function drag(e) {
+                if (isDragging) {
+                    e.preventDefault();
+                    currentX = e.clientX - initialX;
+                    currentY = e.clientY - initialY;
+
+                    xOffset = currentX;
+                    yOffset = currentY;
+
+                    setTranslate(currentX, currentY, cropArea);
+                }
+            }
+
+            function setTranslate(xPos, yPos, el) {
+                el.style.transform = `translate3d(${xPos}px, ${yPos}px, 0)`;
+            }
+
+            function dragEnd(e) {
+                initialX = currentX;
+                initialY = currentY;
+                isDragging = false;
+            }
+        }
+
+        function processImage() {
+            const preview = document.getElementById('imagePreview');
+            const cropArea = document.getElementById('cropArea');
+            
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = 150;
+            canvas.height = 150;
+            
+            const previewRect = preview.getBoundingClientRect();
+            const cropRect = cropArea.getBoundingClientRect();
+            
+            const scaleX = preview.naturalWidth / previewRect.width;
+            const scaleY = preview.naturalHeight / previewRect.height;
+            
+            const cropX = (cropRect.left - previewRect.left) * scaleX;
+            const cropY = (cropRect.top - previewRect.top) * scaleY;
+            const cropWidth = cropRect.width * scaleX;
+            const cropHeight = cropRect.height * scaleY;
+            
+            ctx.drawImage(preview, 
+                cropX, cropY, cropWidth, cropHeight,
+                0, 0, 150, 150
+            );
+            
+            customMoleImage = canvas.toDataURL('image/png');
+            
+            alert('Image processed successfully! Click "Start Game" to play with your custom mole.');
+        }
+
+        function updateLevel() {
+            const levelElement = document.getElementById('level');
+            const progressElement = document.getElementById('levelProgress');
+            const expNeeded = level * 100;
+            
+            levelElement.textContent = `Level: ${level}`;
+            progressElement.style.width = `${(experience / expNeeded) * 100}%`;
+            
+            if (experience >= expNeeded) {
+                level++;
+                experience = 0;
+                showLevelUpMessage();
+                updateDifficulty();
+            }
+        }
+
+        function showLevelUpMessage() {
+            const message = document.createElement('div');
+            message.className = 'achievement-popup';
+            message.innerHTML = `
+                <h3 style="color: var(--secondary-color); margin: 0;">Level Up!</h3>
+                <p>You reached level ${level}!</p>
+            `;
+            document.body.appendChild(message);
+            setTimeout(() => message.remove(), 3000);
+        }
+
+        function checkAchievements() {
+            const newAchievements = [];
+            
+            if (combo >= 5 && !achievements.includes('combo5')) {
+                newAchievements.push({ id: 'combo5', name: 'Combo Master', description: 'Reach a 5x combo!' });
+            }
+            if (combo >= 10 && !achievements.includes('combo10')) {
+                newAchievements.push({ id: 'combo10', name: 'Combo Legend', description: 'Reach a 10x combo!' });
+            }
+            
+            if (score >= 100 && !achievements.includes('score100')) {
+                newAchievements.push({ id: 'score100', name: 'Century Club', description: 'Score 100 points!' });
+            }
+            
+            if (level >= 5 && !achievements.includes('level5')) {
+                newAchievements.push({ id: 'level5', name: 'Rising Star', description: 'Reach level 5!' });
+            }
+            
+            newAchievements.forEach(achievement => {
+                achievements.push(achievement.id);
+                showAchievementPopup(achievement);
+            });
+            
+            localStorage.setItem('achievements', JSON.stringify(achievements));
+        }
+
+        function showAchievementPopup(achievement) {
+            const popup = document.createElement('div');
+            popup.className = 'achievement-popup';
+            popup.innerHTML = `
+                <h3 style="color: var(--secondary-color); margin: 0;">Achievement Unlocked!</h3>
+                <p>${achievement.name}</p>
+                <p style="font-size: 0.8em;">${achievement.description}</p>
+            `;
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 3000);
+        }
+
+        // Initialize daily challenges
+        function initializeDailyChallenges() {
+            const today = new Date().toDateString();
+            if (!dailyChallenges.length || dailyChallenges[0].date !== today) {
+                dailyChallenges = [
+                    {
+                        date: today,
+                        challenges: [
+                            { type: 'score', target: 100, reward: 50, completed: false },
+                            { type: 'combo', target: 5, reward: 30, completed: false },
+                            { type: 'golden', target: 3, reward: 40, completed: false }
+                        ]
+                    }
+                ];
+                localStorage.setItem('dailyChallenges', JSON.stringify(dailyChallenges));
+            }
+            updateDailyChallengesDisplay();
+        }
+
+        function updateDailyChallengesDisplay() {
+            const container = document.createElement('div');
+            container.className = 'daily-challenge';
+            container.innerHTML = `
+                <h3>Daily Challenges</h3>
+                ${dailyChallenges[0].challenges.map(challenge => `
+                    <div style="margin: 10px 0;">
+                        ${getChallengeDescription(challenge)}
+                        <div style="color: ${challenge.completed ? 'gold' : 'white'}">
+                            ${challenge.completed ? '✅' : '⏳'}
+                        </div>
+                    </div>
+                `).join('')}
+            `;
+            document.body.appendChild(container);
+        }
+
+        function getChallengeDescription(challenge) {
+            switch(challenge.type) {
+                case 'score': return `Score ${challenge.target} points`;
+                case 'combo': return `Get a ${challenge.target}x combo`;
+                case 'golden': return `Hit ${challenge.target} golden moles`;
+            }
+        }
+
+        function checkDailyChallenges() {
+            const challenges = dailyChallenges[0].challenges;
+            challenges.forEach(challenge => {
+                if (!challenge.completed) {
+                    switch(challenge.type) {
+                        case 'score':
+                            if (score >= challenge.target) completeChallenge(challenge);
+                            break;
+                        case 'combo':
+                            if (combo >= challenge.target) completeChallenge(challenge);
+                            break;
+                        case 'golden':
+                            if (goldenMolesHit >= challenge.target) completeChallenge(challenge);
+                            break;
+                    }
+                }
+            });
+        }
+
+        function completeChallenge(challenge) {
+            challenge.completed = true;
+            coins += challenge.reward;
+            document.querySelector('.coins-display').innerHTML = `🪙 ${coins}`;
+            localStorage.setItem('coins', coins);
+            localStorage.setItem('dailyChallenges', JSON.stringify(dailyChallenges));
+            showRewardPopup(challenge.reward);
+        }
+
+        function showRewardPopup(amount) {
+            const popup = document.createElement('div');
+            popup.className = 'achievement-popup';
+            popup.innerHTML = `
+                <h3 style="color: gold;">${amount > 0 ? 'Reward Claimed!' : 'Purchase Complete!'}</h3>
+                <p>${amount > 0 ? '+' : ''}${amount} coins</p>
+            `;
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 3000);
+        }
+
+        // Special events system
+        function startSpecialEvent() {
+            if (Math.random() < 0.1) { // 10% chance to start special event
+                const events = [
+                    { type: 'goldenRush', duration: 30, description: 'Golden Rush!' },
+                    { type: 'doublePoints', duration: 20, description: 'Double Points!' },
+                    { type: 'slowMotion', duration: 15, description: 'Slow Motion!' }
+                ];
+                const event = events[Math.floor(Math.random() * events.length)];
+                specialEventActive = true;
+                eventType = event.type;
+                
+                const eventPopup = document.querySelector('.special-event');
+                eventPopup.innerHTML = `
+                    <h2 style="color: var(--secondary-color); margin: 0 0 10px 0;">${event.description}</h2>
+                    <div class="event-timer">${event.duration}s</div>
+                `;
+                eventPopup.classList.add('active');
+
+                let timeLeft = event.duration;
+                eventTimer = setInterval(() => {
+                    timeLeft--;
+                    eventPopup.querySelector('.event-timer').textContent = `${timeLeft}s`;
+                    if (timeLeft <= 0) {
+                        clearInterval(eventTimer);
+                        eventPopup.classList.remove('active');
+                        specialEventActive = false;
+                        eventType = null;
+                    }
+                }, 1000);
+
+                activatePowerUp(event.type);
+            }
+        }
+
+        // Skin system
+        function showShop() {
+            const skinsContainer = document.getElementById('skins-container');
+            skinsContainer.innerHTML = `
+                <div class="upgrade-item">
+                    <div class="upgrade-info">
+                        <div>Hammer Speed</div>
+                        <div class="upgrade-level">Level ${upgrades.hammerSpeed}/5</div>
+                    </div>
+                    <button onclick="buyUpgrade('hammerSpeed')" 
+                            class="upgrade-button"
+                            ${upgrades.hammerSpeed >= 5 ? 'disabled' : ''}>
+                        ${getUpgradePrice('hammerSpeed')} 🪙
+                    </button>
+                </div>
+                <div class="upgrade-item">
+                    <div class="upgrade-info">
+                        <div>Mole Slowdown</div>
+                        <div class="upgrade-level">Level ${upgrades.moleSlowdown}/5</div>
+                    </div>
+                    <button onclick="buyUpgrade('moleSlowdown')" 
+                            class="upgrade-button"
+                            ${upgrades.moleSlowdown >= 5 ? 'disabled' : ''}>
+                        ${getUpgradePrice('moleSlowdown')} 🪙
+                    </button>
+                </div>
+                <div class="upgrade-item">
+                    <div class="upgrade-info">
+                        <div>Golden Chance</div>
+                        <div class="upgrade-level">Level ${upgrades.goldenChance}/5</div>
+                    </div>
+                    <button onclick="buyUpgrade('goldenChance')" 
+                            class="upgrade-button"
+                            ${upgrades.goldenChance >= 5 ? 'disabled' : ''}>
+                        ${getUpgradePrice('goldenChance')} 🪙
+                    </button>
+                </div>
+                <div class="upgrade-item">
+                    <div class="upgrade-info">
+                        <div>Power-up Duration</div>
+                        <div class="upgrade-level">Level ${upgrades.powerUpDuration}/5</div>
+                    </div>
+                    <button onclick="buyUpgrade('powerUpDuration')" 
+                            class="upgrade-button"
+                            ${upgrades.powerUpDuration >= 5 ? 'disabled' : ''}>
+                        ${getUpgradePrice('powerUpDuration')} 🪙
+                    </button>
+                </div>
+            `;
+            document.querySelector('.shop-panel').style.display = 'block';
+        }
+
+        function getUpgradePrice(type) {
+            const basePrice = {
+                hammerSpeed: 50,
+                moleSlowdown: 75,
+                goldenChance: 100,
+                powerUpDuration: 150
+            };
+            return Math.floor(basePrice[type] * Math.pow(1.5, upgrades[type] - 1));
+        }
+
+        function buyUpgrade(type) {
+            const price = getUpgradePrice(type);
+            if (coins >= price && upgrades[type] < 5) {
+                coins -= price;
+                upgrades[type]++;
+                localStorage.setItem('coins', coins);
+                localStorage.setItem('upgrades', JSON.stringify(upgrades));
+                document.querySelector('.coins-display').innerHTML = `🪙 ${coins}`;
+                showRewardPopup(-price);
+                showShop();
+                applyUpgrades();
+            } else if (upgrades[type] >= 5) {
+                alert('Maximum level reached!');
+            } else {
+                alert('Not enough coins!');
+            }
+        }
+
+        function applyUpgrades() {
+            // Apply hammer speed upgrade
+            const hammerSpeedMultiplier = 1 + (upgrades.hammerSpeed - 1) * 0.2;
+            
+            // Apply mole slowdown upgrade
+            moleDisplayTime = 3000 / (1 + (upgrades.moleSlowdown - 1) * 0.15);
+            
+            // Apply golden chance upgrade
+            const goldenChanceBonus = (upgrades.goldenChance - 1) * 0.05;
+            
+            // Apply power-up duration upgrade
+            const powerUpDurationMultiplier = 1 + (upgrades.powerUpDuration - 1) * 0.25;
+        }
+
+        function showPrestigePanel() {
+            document.querySelector('.prestige-panel').style.display = 'block';
+        }
+
+        function prestige() {
+            if (coins >= 1000) {
+                coins -= 1000;
+                prestigeLevel++;
+                localStorage.setItem('prestigeLevel', prestigeLevel);
+                localStorage.setItem('coins', coins);
+                document.querySelector('.coins-display').innerHTML = `🪙 ${coins}`;
+                document.querySelector('.prestige-button').innerHTML = `⭐ Prestige (${prestigeLevel})`;
+                prestigeMultiplier = 1 + (prestigeLevel * 0.1);
+                showRewardPopup('Prestige Complete! All upgrades reset with bonus!');
+                resetUpgrades();
+                document.querySelector('.prestige-panel').style.display = 'none';
+            } else {
+                alert('Not enough coins for prestige!');
+            }
+        }
+
+        function resetUpgrades() {
+            upgrades = {
+                hammerSpeed: 1,
+                moleSlowdown: 1,
+                goldenChance: 1,
+                powerUpDuration: 1
+            };
+            localStorage.setItem('upgrades', JSON.stringify(upgrades));
+            applyUpgrades();
+        }
+
+        function startBossBattle() {
+            if (Math.random() < 0.05 && !bossActive) { // 5% chance to start boss battle
+                bossActive = true;
+                bossHealth = 100;
+                const bossContainer = document.querySelector('.boss-container');
+                bossContainer.style.display = 'block';
+                
+                let timeLeft = 30;
+                const bossTimer = setInterval(() => {
+                    timeLeft--;
+                    document.querySelector('.boss-timer').textContent = `${timeLeft}s`;
+                    if (timeLeft <= 0 || bossHealth <= 0) {
+                        clearInterval(bossTimer);
+                        endBossBattle();
+                    }
+                }, 1000);
+            }
+        }
+
+        function hitBoss() {
+            if (bossActive) {
+                bossHealth -= 10 * prestigeMultiplier;
+                document.querySelector('.boss-health-bar').style.width = `${bossHealth}%`;
+                
+                if (bossHealth <= 0) {
+                    endBossBattle(true);
+                }
+            }
+        }
+
+        function endBossBattle(victory = false) {
+            bossActive = false;
+            document.querySelector('.boss-container').style.display = 'none';
+            
+            if (victory) {
+                const reward = Math.floor(100 * prestigeMultiplier);
+                coins += reward;
+                localStorage.setItem('coins', coins);
+                document.querySelector('.coins-display').innerHTML = `🪙 ${coins}`;
+                
+                const rewardPopup = document.querySelector('.boss-reward');
+                rewardPopup.querySelector('.reward-amount').textContent = `+${reward} coins`;
+                rewardPopup.style.display = 'block';
+                setTimeout(() => rewardPopup.style.display = 'none', 3000);
+            }
+        }
+
+        function startMiniGame() {
+            if (Math.random() < 0.1 && !miniGameActive) { // 10% chance to start mini-game
+                miniGameActive = true;
+                const miniGameContainer = document.querySelector('.mini-game-container');
+                miniGameContainer.style.display = 'block';
+                
+                let timeLeft = 5;
+                const miniGameTimer = setInterval(() => {
+                    timeLeft--;
+                    document.querySelector('.mini-game-timer').textContent = `${timeLeft}s`;
+                    if (timeLeft <= 0) {
+                        clearInterval(miniGameTimer);
+                        endMiniGame();
+                    }
+                }, 1000);
+                
+                spawnMiniGameTarget();
+            }
+        }
+
+        function spawnMiniGameTarget() {
+            if (!miniGameActive) return;
+            
+            const target = document.createElement('div');
+            target.classList.add('mini-game-target');
+            target.style.left = `${Math.random() * 300}px`;
+            target.style.top = `${Math.random() * 300}px`;
+            
+            target.addEventListener('click', () => {
+                coins += Math.floor(5 * prestigeMultiplier);
+                localStorage.setItem('coins', coins);
+                document.querySelector('.coins-display').innerHTML = `🪙 ${coins}`;
+                target.remove();
+                spawnMiniGameTarget();
+            });
+            
+            document.querySelector('.mini-game-area').appendChild(target);
+        }
+
+        function endMiniGame() {
+            miniGameActive = false;
+            document.querySelector('.mini-game-container').style.display = 'none';
+            document.querySelector('.mini-game-area').innerHTML = '';
+        }
+
+        window.onload = () => {
+            document.getElementById('menuContainer').style.display = 'flex';
+            document.getElementById('customMoleContainer').style.display = 'none';
+        };
     </script>
 </body>
 </html>
