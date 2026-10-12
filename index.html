@@ -1412,8 +1412,12 @@
         </div>
     </div>
 
-    <!-- Audio Element Fallback -->
+    <!-- Audio Elements for Characters & Custom Moles -->
     <audio id="hitSound" src="hit.mp3" preload="auto"></audio>
+    <audio id="hitSound-hasina" src="hit.mp3" preload="auto"></audio>
+    <audio id="hitSound-quader" src="Quader.mp3" preload="auto"></audio>
+    <audio id="hitSound-joy" src="joy.mp3" preload="auto"></audio>
+    <audio id="hitSound-general" src="general.mp3" preload="auto"></audio>
 
     <!-- Core Game Logic -->
     <script>
@@ -1430,26 +1434,48 @@
                 this.muted = false;
                 this.musicPlaying = false;
                 this.musicInterval = null;
-                this.hitAudioElement = document.getElementById('hitSound');
-                this.isHitAudioPlaying = false;
-                this.initHitAudio();
+                this.hitAudioElements = {
+                    hasina: document.getElementById('hitSound-hasina') || document.getElementById('hitSound'),
+                    quader: document.getElementById('hitSound-quader'),
+                    joy: document.getElementById('hitSound-joy'),
+                    general: document.getElementById('hitSound-general'),
+                    default: document.getElementById('hitSound')
+                };
+                this.activeVoiceAudio = null;
+                this.initHitAudios();
                 this.initContext();
             }
 
-            initHitAudio() {
-                if (!this.hitAudioElement) return;
-                this.hitAudioElement.volume = 0.75;
-                this.hitAudioElement.addEventListener('ended', () => {
-                    this.isHitAudioPlaying = false;
+            initHitAudios() {
+                const audios = Object.values(this.hitAudioElements).filter(Boolean);
+                audios.forEach(audioEl => {
+                    audioEl.volume = 0.75;
+                    audioEl.addEventListener('ended', () => {
+                        if (this.activeVoiceAudio === audioEl) {
+                            this.activeVoiceAudio = null;
+                        }
+                    });
+                    audioEl.addEventListener('pause', () => {
+                        if (audioEl.ended || audioEl.currentTime === 0) {
+                            if (this.activeVoiceAudio === audioEl) {
+                                this.activeVoiceAudio = null;
+                            }
+                        }
+                    });
+                    audioEl.addEventListener('error', () => {
+                        if (this.activeVoiceAudio === audioEl) {
+                            this.activeVoiceAudio = null;
+                        }
+                    });
                 });
-                this.hitAudioElement.addEventListener('pause', () => {
-                    if (this.hitAudioElement.ended || this.hitAudioElement.currentTime === 0) {
-                        this.isHitAudioPlaying = false;
-                    }
-                });
-                this.hitAudioElement.addEventListener('error', () => {
-                    this.isHitAudioPlaying = false;
-                });
+            }
+
+            getAudioElement(charKey) {
+                const key = (charKey || 'hasina').toLowerCase();
+                if (key === 'quader') return this.hitAudioElements.quader;
+                if (key === 'joy') return this.hitAudioElements.joy;
+                if (key === 'general' || key === 'custom') return this.hitAudioElements.general;
+                return this.hitAudioElements.hasina || this.hitAudioElements.default;
             }
 
             initContext() {
@@ -1476,11 +1502,15 @@
                     btn.textContent = '🔇';
                     btn.classList.remove('active');
                     this.stopMusic();
-                    if (this.hitAudioElement) {
-                        this.hitAudioElement.pause();
-                        this.hitAudioElement.currentTime = 0;
-                        this.isHitAudioPlaying = false;
-                    }
+                    Object.values(this.hitAudioElements).forEach(el => {
+                        if (el) {
+                            try {
+                                el.pause();
+                                el.currentTime = 0;
+                            } catch(e) {}
+                        }
+                    });
+                    this.activeVoiceAudio = null;
                 } else {
                     btn.textContent = '🔊';
                     btn.classList.add('active');
@@ -1490,24 +1520,33 @@
             }
 
             // Punchy Whack SFX
-            playWhack(skin = 'default') {
+            playWhack(skin = 'default', charKey = 'hasina') {
                 if (this.muted) return;
                 this.resumeContext();
 
-                // Play full hit audio: do NOT restart if already playing!
-                // Only plays again on a subsequent hit AFTER the previous audio finishes completely.
-                if (this.hitAudioElement) {
-                    const isPlaying = this.isHitAudioPlaying && !this.hitAudioElement.paused && !this.hitAudioElement.ended;
+                // Play character-specific hit voice audio:
+                // - Quader -> Quader.mp3
+                // - Joy -> joy.mp3
+                // - Custom mole -> general.mp3
+                // - Hasina / default -> hit.mp3
+                // Full audio plays without restarting until finished!
+                const targetAudio = this.getAudioElement(charKey);
+                if (targetAudio) {
+                    const isPlaying = this.activeVoiceAudio && 
+                                      !this.activeVoiceAudio.paused && 
+                                      !this.activeVoiceAudio.ended;
                     if (!isPlaying) {
-                        this.isHitAudioPlaying = true;
-                        this.hitAudioElement.currentTime = 0;
-                        this.hitAudioElement.volume = 0.75;
-                        const playPromise = this.hitAudioElement.play();
+                        this.activeVoiceAudio = targetAudio;
+                        targetAudio.currentTime = 0;
+                        targetAudio.volume = 0.75;
+                        const playPromise = targetAudio.play();
                         if (playPromise !== undefined && typeof playPromise.then === 'function') {
                             playPromise.then(() => {
-                                this.isHitAudioPlaying = true;
+                                this.activeVoiceAudio = targetAudio;
                             }).catch(() => {
-                                this.isHitAudioPlaying = false;
+                                if (this.activeVoiceAudio === targetAudio) {
+                                    this.activeVoiceAudio = null;
+                                }
                             });
                         }
                     }
@@ -1818,14 +1857,15 @@
             initHoles() {
                 const arena = document.getElementById('whackGrid');
                 arena.innerHTML = '';
+                const moleData = this.getActiveMoleData();
                 for (let i = 0; i < 9; i++) {
                     const hole = document.createElement('div');
                     hole.className = 'hole-wrapper';
                     hole.dataset.holeId = i;
 
                     hole.innerHTML = `
-                        <div class="mole-target" id="mole-${i}">
-                            <img src="${this.getActiveMoleImage()}" alt="Mole" id="mole-img-${i}">
+                        <div class="mole-target" id="mole-${i}" data-character="${moleData.charKey}">
+                            <img src="${moleData.img}" alt="Mole" id="mole-img-${i}">
                         </div>
                         <img src="blood.png" alt="Splat" class="blood-splat" id="splat-${i}">
                         <div class="hole-base"></div>
@@ -1840,16 +1880,39 @@
                 }
             }
 
-            getActiveMoleImage() {
+            getActiveMoleData() {
                 if (this.storage.data.customMoleUrl) {
-                    return this.storage.data.customMoleUrl;
+                    const customUrl = this.storage.data.customMoleUrl;
+                    if (customUrl === 'Obaidul_Kader.png') {
+                        return { charKey: 'quader', img: 'Obaidul_Kader.png', audio: 'quader' };
+                    }
+                    if (customUrl === 'Sajeeb_Wazed.png') {
+                        return { charKey: 'joy', img: 'Sajeeb_Wazed.png', audio: 'joy' };
+                    }
+                    if (customUrl === 'mole.png') {
+                        return { charKey: 'hasina', img: 'mole.png', audio: 'hasina' };
+                    }
+                    return { charKey: 'general', img: customUrl, audio: 'general' };
                 }
                 if (this.selectedCharacter === 'chaos') {
                     const keys = ['hasina', 'quader', 'joy'];
                     const chosen = keys[Math.floor(Math.random() * keys.length)];
-                    return this.characterAssets[chosen].img;
+                    return {
+                        charKey: chosen,
+                        img: this.characterAssets[chosen].img,
+                        audio: chosen
+                    };
                 }
-                return this.characterAssets[this.selectedCharacter]?.img || 'mole.png';
+                const key = this.selectedCharacter || 'hasina';
+                return {
+                    charKey: key,
+                    img: this.characterAssets[key]?.img || 'mole.png',
+                    audio: key
+                };
+            }
+
+            getActiveMoleImage() {
+                return this.getActiveMoleData().img;
             }
 
             setCharacter(charId, btn) {
@@ -1861,10 +1924,12 @@
                     btn.classList.add('active');
                 }
                 if (charId !== 'chaos') {
-                    const activeImg = this.getActiveMoleImage();
+                    const moleData = this.getActiveMoleData();
                     for (let i = 0; i < 9; i++) {
                         const el = document.getElementById(`mole-img-${i}`);
-                        if (el) el.src = activeImg;
+                        if (el) el.src = moleData.img;
+                        const target = document.getElementById(`mole-${i}`);
+                        if (target) target.dataset.character = moleData.charKey;
                     }
                 }
             }
@@ -2047,10 +2112,12 @@
                     moleEl.dataset.moleType = 'normal';
                 }
 
-                // Update mole image if Chaos Trio or custom
+                // Update mole character & image
+                const moleData = this.getActiveMoleData();
+                moleEl.dataset.character = moleData.charKey;
                 const moleImg = moleEl.querySelector('img');
                 if (moleImg) {
-                    moleImg.src = this.getActiveMoleImage();
+                    moleImg.src = moleData.img;
                 }
 
                 moleEl.classList.add('show');
@@ -2119,7 +2186,8 @@
                         this.maxCombo = Math.max(this.maxCombo, this.combo);
 
                         const currentSkin = this.storage.data.currentHammer;
-                        this.sound.playWhack(currentSkin);
+                        const charKey = moleEl ? moleEl.dataset.character : (this.storage.data.customMoleUrl ? 'general' : this.selectedCharacter);
+                        this.sound.playWhack(currentSkin, charKey);
 
                         // Splat Animation
                         if (splatEl) {
@@ -2383,7 +2451,7 @@
                 setTimeout(() => avatar.classList.remove('hit'), 120);
 
                 const currentSkin = this.storage.data.currentHammer;
-                this.sound.playWhack(currentSkin);
+                this.sound.playWhack(currentSkin, this.bossCharacter);
 
                 // Damage output based on hammer skin
                 const damageMap = { default: 25, golden: 35, cyber: 45, mjolnir: 60, slipper: 50 };
@@ -2890,9 +2958,12 @@
                 this.game.storage.data.customMoleUrl = null;
                 this.game.storage.save();
                 this.previewImg.src = this.game.characterAssets[this.game.selectedCharacter]?.img || 'mole.png';
+                const moleData = this.game.getActiveMoleData();
                 for (let i = 0; i < 9; i++) {
                     const img = document.getElementById(`mole-img-${i}`);
-                    if (img) img.src = this.game.getActiveMoleImage();
+                    if (img) img.src = moleData.img;
+                    const target = document.getElementById(`mole-${i}`);
+                    if (target) target.dataset.character = moleData.charKey;
                 }
                 alert('Cleared custom override! Now using selected character preset.');
                 if (window.ui) window.ui.closeModals();
@@ -2904,9 +2975,12 @@
                     this.game.storage.save();
 
                     // Apply to all holes immediately
+                    const moleData = this.game.getActiveMoleData();
                     for (let i = 0; i < 9; i++) {
                         const img = document.getElementById(`mole-img-${i}`);
-                        if (img) img.src = this.tempDataUrl;
+                        if (img) img.src = moleData.img;
+                        const target = document.getElementById(`mole-${i}`);
+                        if (target) target.dataset.character = moleData.charKey;
                     }
 
                     alert('Custom Mole applied! Your new face is ready in all game modes.');
