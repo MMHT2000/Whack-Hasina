@@ -1127,7 +1127,10 @@
             <div class="menu-card-btn" id="questsMenuBtn">
                 <div class="menu-card-icon">📜</div>
                 <div class="menu-card-content">
-                    <h3>Daily Quests</h3>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <h3>Daily Quests</h3>
+                        <span id="questsBadge" style="display:none; font-family:var(--font-retro); font-size:9px; background:var(--gold); color:#000; padding:2px 6px; border-radius:8px; font-weight:900;"></span>
+                    </div>
                     <p>Complete challenges to earn big coin payouts.</p>
                 </div>
             </div>
@@ -1356,6 +1359,10 @@
             <div class="modal-header">
                 <h3 class="modal-title">DAILY BOUNTY QUESTS</h3>
                 <button class="close-modal-btn" onclick="ui.closeModals()">&times;</button>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                <span style="font-size:12px; color:var(--text-muted);">RESETS DAILY • TAP TO CLAIM BONUS</span>
+                <button class="btn gold" id="claimAllQuestsBtn" style="padding:6px 14px; font-size:11px; display:none;" onclick="game.claimAllQuests()">CLAIM ALL 🪙</button>
             </div>
             <div id="questsContainer"></div>
         </div>
@@ -1655,7 +1662,8 @@
                     customMoleUrl: null,
                     selectedCharacter: 'hasina',
                     questsDate: '',
-                    questsProgress: {}
+                    questsProgress: { whack: 0, golden: 0, combo: 0 },
+                    questsClaimed: []
                 };
                 this.load();
             }
@@ -2114,7 +2122,7 @@
                         }
 
                         this.trackQuestProgress('whack');
-                        if (this.combo >= 5) this.trackQuestProgress('combo');
+                        this.trackQuestProgress('combo', this.combo);
 
                         // Check Win Condition
                         if (this.score >= this.targetScore && this.targetScore < 99999) {
@@ -2161,6 +2169,7 @@
                 const mult = (1 + (this.storage.data.prestigeRank * 0.15)).toFixed(2);
                 const multEl = document.getElementById('prestigeMultiplierVal');
                 if (multEl) multEl.textContent = `x${mult}`;
+                this.updateQuestBadge();
             }
 
             spawnFloater(x, y, text, color = '#ffffff') {
@@ -2403,14 +2412,127 @@
                 if (this.storage.data.questsDate !== today) {
                     this.storage.data.questsDate = today;
                     this.storage.data.questsProgress = { whack: 0, golden: 0, combo: 0 };
+                    this.storage.data.questsClaimed = [];
                     this.storage.save();
+                }
+                if (!this.storage.data.questsClaimed) {
+                    this.storage.data.questsClaimed = [];
+                }
+                this.updateQuestBadge();
+            }
+
+            trackQuestProgress(type, val = 1) {
+                if (!this.storage.data.questsProgress) {
+                    this.storage.data.questsProgress = { whack: 0, golden: 0, combo: 0 };
+                }
+                if (!this.storage.data.questsClaimed) {
+                    this.storage.data.questsClaimed = [];
+                }
+
+                const prevWhack = this.storage.data.questsProgress.whack || 0;
+                const prevGolden = this.storage.data.questsProgress.golden || 0;
+                const prevCombo = this.storage.data.questsProgress.combo || 0;
+
+                if (type === 'combo') {
+                    this.storage.data.questsProgress.combo = Math.max(prevCombo, val);
+                } else {
+                    this.storage.data.questsProgress[type] = (this.storage.data.questsProgress[type] || 0) + val;
+                }
+
+                // Check for freshly completed quests
+                const targets = { whack: 25, golden: 3, combo: 5 };
+                const rewards = { whack: 80, golden: 120, combo: 100 };
+                const isClaimed = this.storage.data.questsClaimed.includes(type);
+
+                const current = this.storage.data.questsProgress[type];
+                const prev = (type === 'whack') ? prevWhack : (type === 'golden') ? prevGolden : prevCombo;
+
+                if (!isClaimed && prev < targets[type] && current >= targets[type]) {
+                    this.sound.playGoldenChime();
+                    this.spawnFloater(window.innerWidth / 2, 140, `📜 QUEST READY: +${rewards[type]} 🪙!`, '#ffd166');
+                }
+
+                this.storage.save();
+                this.updateQuestBadge();
+            }
+
+            claimQuestReward(questId, reward) {
+                if (!this.storage.data.questsClaimed) this.storage.data.questsClaimed = [];
+                if (this.storage.data.questsClaimed.includes(questId)) return;
+
+                const progress = this.storage.data.questsProgress[questId] || 0;
+                const targets = { whack: 25, golden: 3, combo: 5 };
+                if (progress < targets[questId]) {
+                    alert('Quest is not completed yet!');
+                    return;
+                }
+
+                // Award Coins!
+                this.storage.data.coins += reward;
+                this.storage.data.questsClaimed.push(questId);
+                this.storage.save();
+
+                // Audio & Visual Effects
+                this.sound.playGoldenChime();
+                this.spawnParticles(window.innerWidth / 2, window.innerHeight / 2, '#ffd166');
+                this.spawnFloater(window.innerWidth / 2, 180, `+${reward} 🪙 CLAIMED!`, '#ffd166');
+
+                this.updateGlobalHUD();
+                this.updateQuestBadge();
+                if (window.ui) window.ui.renderQuests();
+            }
+
+            claimAllQuests() {
+                if (!this.storage.data.questsClaimed) this.storage.data.questsClaimed = [];
+                const targets = { whack: 25, golden: 3, combo: 5 };
+                const rewards = { whack: 80, golden: 120, combo: 100 };
+                let totalClaimed = 0;
+
+                Object.keys(targets).forEach(qId => {
+                    const progress = this.storage.data.questsProgress[qId] || 0;
+                    if (progress >= targets[qId] && !this.storage.data.questsClaimed.includes(qId)) {
+                        this.storage.data.coins += rewards[qId];
+                        this.storage.data.questsClaimed.push(qId);
+                        totalClaimed += rewards[qId];
+                    }
+                });
+
+                if (totalClaimed > 0) {
+                    this.storage.save();
+                    this.sound.playGoldenChime();
+                    this.spawnParticles(window.innerWidth / 2, window.innerHeight / 2, '#ffd166');
+                    this.spawnFloater(window.innerWidth / 2, 180, `+${totalClaimed} 🪙 CLAIMED!`, '#ffd166');
+                    this.updateGlobalHUD();
+                    this.updateQuestBadge();
+                    if (window.ui) window.ui.renderQuests();
                 }
             }
 
-            trackQuestProgress(type) {
-                if (this.storage.data.questsProgress[type] !== undefined) {
-                    this.storage.data.questsProgress[type]++;
-                    this.storage.save();
+            updateQuestBadge() {
+                const targets = { whack: 25, golden: 3, combo: 5 };
+                const claimed = this.storage.data.questsClaimed || [];
+                const progress = this.storage.data.questsProgress || {};
+
+                let claimableCount = 0;
+                Object.keys(targets).forEach(k => {
+                    if ((progress[k] || 0) >= targets[k] && !claimed.includes(k)) {
+                        claimableCount++;
+                    }
+                });
+
+                const badge = document.getElementById('questsBadge');
+                if (badge) {
+                    if (claimableCount > 0) {
+                        badge.style.display = 'inline-block';
+                        badge.textContent = `${claimableCount} READY!`;
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+
+                const claimAllBtn = document.getElementById('claimAllQuestsBtn');
+                if (claimAllBtn) {
+                    claimAllBtn.style.display = claimableCount > 0 ? 'inline-block' : 'none';
                 }
             }
 
@@ -2638,7 +2760,8 @@
 
             renderQuests() {
                 const container = document.getElementById('questsContainer');
-                const progress = this.game.storage.data.questsProgress;
+                const progress = this.game.storage.data.questsProgress || {};
+                const claimed = this.game.storage.data.questsClaimed || [];
                 const quests = [
                     { id: 'whack', title: 'Whack 25 Moles', current: progress.whack || 0, target: 25, reward: 80 },
                     { id: 'golden', title: 'Catch 3 Golden Moles', current: progress.golden || 0, target: 3, reward: 120 },
@@ -2648,21 +2771,30 @@
                 container.innerHTML = quests.map(q => {
                     const pct = Math.min(100, Math.round((q.current / q.target) * 100));
                     const isDone = q.current >= q.target;
+                    const isClaimed = claimed.includes(q.id);
+
                     return `
-                        <div class="quest-item">
+                        <div class="quest-item" style="${isDone && !isClaimed ? 'border-color: var(--gold); box-shadow: 0 0 14px var(--gold-glow);' : ''}">
                             <div class="quest-info">
                                 <h4>${q.title}</h4>
-                                <p>Progress: ${q.current} / ${q.target}</p>
+                                <p>Progress: ${Math.min(q.current, q.target)} / ${q.target} ${isDone ? (isClaimed ? '✅ CLAIMED' : '✨ READY TO CLAIM!') : ''}</p>
                                 <div class="quest-progress-bar">
                                     <div class="quest-progress-fill" style="width:${pct}%;"></div>
                                 </div>
                             </div>
                             <div>
-                                <span style="font-weight:800; color:var(--gold); font-size:13px;">+${q.reward} 🪙</span>
+                                ${isClaimed 
+                                    ? `<button class="btn secondary" style="padding:6px 12px; font-size:11px;" disabled>CLAIMED ✅</button>`
+                                    : isDone
+                                        ? `<button class="btn gold" style="padding:8px 14px; font-size:12px;" onclick="game.claimQuestReward('${q.id}', ${q.reward})">CLAIM +${q.reward} 🪙</button>`
+                                        : `<span style="font-weight:800; color:var(--text-muted); font-size:12px;">+${q.reward} 🪙</span>`
+                                }
                             </div>
                         </div>
                     `;
                 }).join('');
+
+                this.game.updateQuestBadge();
             }
 
             renderAchievements() {
