@@ -1431,7 +1431,25 @@
                 this.musicPlaying = false;
                 this.musicInterval = null;
                 this.hitAudioElement = document.getElementById('hitSound');
+                this.isHitAudioPlaying = false;
+                this.initHitAudio();
                 this.initContext();
+            }
+
+            initHitAudio() {
+                if (!this.hitAudioElement) return;
+                this.hitAudioElement.volume = 0.75;
+                this.hitAudioElement.addEventListener('ended', () => {
+                    this.isHitAudioPlaying = false;
+                });
+                this.hitAudioElement.addEventListener('pause', () => {
+                    if (this.hitAudioElement.ended || this.hitAudioElement.currentTime === 0) {
+                        this.isHitAudioPlaying = false;
+                    }
+                });
+                this.hitAudioElement.addEventListener('error', () => {
+                    this.isHitAudioPlaying = false;
+                });
             }
 
             initContext() {
@@ -1458,6 +1476,11 @@
                     btn.textContent = '🔇';
                     btn.classList.remove('active');
                     this.stopMusic();
+                    if (this.hitAudioElement) {
+                        this.hitAudioElement.pause();
+                        this.hitAudioElement.currentTime = 0;
+                        this.isHitAudioPlaying = false;
+                    }
                 } else {
                     btn.textContent = '🔊';
                     btn.classList.add('active');
@@ -1471,13 +1494,23 @@
                 if (this.muted) return;
                 this.resumeContext();
 
-                // If hit.mp3 is loaded, play it with pitch variance
+                // Play full hit audio: do NOT restart if already playing!
+                // Only plays again on a subsequent hit AFTER the previous audio finishes completely.
                 if (this.hitAudioElement) {
-                    try {
-                        const soundClone = this.hitAudioElement.cloneNode();
-                        soundClone.volume = 0.65;
-                        soundClone.play().catch(() => {});
-                    } catch(e) {}
+                    const isPlaying = this.isHitAudioPlaying && !this.hitAudioElement.paused && !this.hitAudioElement.ended;
+                    if (!isPlaying) {
+                        this.isHitAudioPlaying = true;
+                        this.hitAudioElement.currentTime = 0;
+                        this.hitAudioElement.volume = 0.75;
+                        const playPromise = this.hitAudioElement.play();
+                        if (playPromise !== undefined && typeof playPromise.then === 'function') {
+                            playPromise.then(() => {
+                                this.isHitAudioPlaying = true;
+                            }).catch(() => {
+                                this.isHitAudioPlaying = false;
+                            });
+                        }
+                    }
                 }
 
                 // Procedural synthesis layer for juicy punch

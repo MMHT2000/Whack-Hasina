@@ -249,8 +249,10 @@
                 if (isOverlapping(moleRect, hammerRect)) {
                     mole.style.display = 'block'; 
                     const blood = mole.nextElementSibling;
-                    blood.style.display = 'block';
-                    hitSound.play();
+                    if (hitSound && (hitSound.paused || hitSound.ended)) {
+                        hitSound.currentTime = 0;
+                        hitSound.play();
+                    }
 
                     mole.style.animation = 'shake 0.5s ease-in-out 2';  
                     setTimeout(() => {
