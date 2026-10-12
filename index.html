@@ -952,6 +952,73 @@
             width: 0%;
         }
 
+        /* Character Selection Grid */
+        .character-select-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .char-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid var(--card-border);
+            border-radius: 14px;
+            padding: 8px 4px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            touch-action: manipulation;
+        }
+
+        .char-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+            border-color: var(--primary);
+        }
+
+        .char-card.active {
+            border-color: var(--gold);
+            background: rgba(255, 209, 102, 0.12);
+            box-shadow: 0 0 12px var(--gold-glow);
+        }
+
+        .char-card img {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            pointer-events: none;
+        }
+
+        .char-card.active img {
+            border-color: var(--gold);
+        }
+
+        .char-card span {
+            font-size: 11px;
+            font-weight: 700;
+            color: #fff;
+            white-space: nowrap;
+        }
+
+        .char-card-chaos-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            background: rgba(131, 56, 236, 0.25);
+            border: 2px solid var(--purple);
+        }
+
         /* Responsive Mobile Specific Fixes */
         @media (max-width: 480px) {
             .hud-nav { padding: 8px 12px; }
@@ -970,6 +1037,10 @@
             .game-title { font-size: 22px; }
             .boss-avatar { width: min(65vw, 180px); height: min(65vw, 180px); }
             .boss-sprite-zone { width: min(70vw, 220px); height: min(70vw, 220px); }
+            .character-select-grid { gap: 6px; }
+            .char-card { padding: 6px 2px; }
+            .char-card img, .char-card-chaos-icon { width: 36px; height: 36px; }
+            .char-card span { font-size: 9px; }
         }
 
         /* On touch devices, hammer shows on tap impact rather than tracking finger */
@@ -1126,9 +1197,15 @@
     <section class="screen-view" id="screenBoss">
         <div class="boss-screen">
             <div class="boss-health-card">
-                <div style="display:flex; justify-content:space-between; font-weight:800;">
-                    <span style="color:#ff2a5f; font-family:var(--font-retro); font-size:14px;">👑 SUPREME HASINA</span>
+                <div style="display:flex; justify-content:space-between; align-items:center; font-weight:800; margin-bottom:8px;">
+                    <span id="bossNameDisplay" style="color:#ff2a5f; font-family:var(--font-retro); font-size:13px;">👑 SUPREME HASINA</span>
                     <span id="bossTimerDisplay" style="color:var(--gold); font-family:var(--font-retro); font-size:14px;">30s</span>
+                </div>
+                <!-- Boss Selection Tabs -->
+                <div class="tab-bar" style="margin-bottom:8px; padding:4px;">
+                    <button class="tab-btn active" onclick="game.selectBoss('hasina', this)">👑 HASINA</button>
+                    <button class="tab-btn" onclick="game.selectBoss('quader', this)">🕶️ QUADER</button>
+                    <button class="tab-btn" onclick="game.selectBoss('joy', this)">💻 JOY</button>
                 </div>
                 <div class="boss-hp-track">
                     <div class="boss-hp-fill" id="bossHpBar"></div>
@@ -1141,7 +1218,7 @@
 
             <div class="boss-sprite-zone" id="bossHitZone">
                 <div class="boss-taunt-bubble" id="bossTauntBubble">Apnara Shanto Hon!</div>
-                <img src="mole.png" alt="Boss Hasina" class="boss-avatar" id="bossAvatarImg">
+                <img src="mole.png" alt="Boss" class="boss-avatar" id="bossAvatarImg">
             </div>
 
             <div style="display:flex; gap:12px; margin-top:16px;">
@@ -1158,7 +1235,29 @@
                 <button class="close-modal-btn" onclick="ui.closeModals()">&times;</button>
             </div>
 
-            <div style="margin-bottom: 20px;">
+            <div style="margin-bottom: 18px;">
+                <label style="font-weight:700; font-size:13px; color:var(--text-muted); display:block; margin-bottom:8px;">TARGET CHARACTER</label>
+                <div class="character-select-grid" id="charSelectGrid">
+                    <div class="char-card active" data-char="hasina" onclick="game.setCharacter('hasina', this)">
+                        <img src="mole.png" alt="Sheikh Hasina">
+                        <span>Hasina</span>
+                    </div>
+                    <div class="char-card" data-char="quader" onclick="game.setCharacter('quader', this)">
+                        <img src="Obaidul_Kader.png" alt="Obaidul Quader">
+                        <span>Quader</span>
+                    </div>
+                    <div class="char-card" data-char="joy" onclick="game.setCharacter('joy', this)">
+                        <img src="Sajeeb_Wazed.png" alt="Sajeeb Wazed">
+                        <span>Joy</span>
+                    </div>
+                    <div class="char-card" data-char="chaos" onclick="game.setCharacter('chaos', this)">
+                        <div class="char-card-chaos-icon">🎲</div>
+                        <span>Chaos Trio</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 18px;">
                 <label style="font-weight:700; font-size:13px; color:var(--text-muted); display:block; margin-bottom:8px;">DIFFICULTY</label>
                 <div class="tab-bar">
                     <button class="tab-btn active" data-difficulty="easy" onclick="game.setDifficulty('easy', this)">EASY</button>
@@ -1236,12 +1335,15 @@
             </div>
 
             <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
-                <input type="file" id="customImageInput" accept="image/*" style="display:none;" onchange="customMole.handleUpload(event)">
-                <button class="btn secondary" onclick="document.getElementById('customImageInput').click()">📁 Choose Image File</button>
-                <div style="display:flex; gap:10px;">
-                    <button class="btn secondary" style="flex:1;" onclick="customMole.setPreset('hasina')">Original Hasina</button>
-                    <button class="btn secondary" style="flex:1;" onclick="customMole.resetDefault()">Reset Default</button>
+                <label style="font-weight:700; font-size:12px; color:var(--text-muted); text-align:center;">OFFICIAL PRESETS</label>
+                <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
+                    <button class="btn secondary" style="padding:10px 4px; font-size:11px;" onclick="customMole.setPreset('mole.png')">👑 Hasina</button>
+                    <button class="btn secondary" style="padding:10px 4px; font-size:11px;" onclick="customMole.setPreset('Obaidul_Kader.png')">🕶️ Quader</button>
+                    <button class="btn secondary" style="padding:10px 4px; font-size:11px;" onclick="customMole.setPreset('Sajeeb_Wazed.png')">💻 Joy</button>
                 </div>
+                <input type="file" id="customImageInput" accept="image/*" style="display:none;" onchange="customMole.handleUpload(event)">
+                <button class="btn secondary" onclick="document.getElementById('customImageInput').click()">📁 Upload Custom Image</button>
+                <button class="btn secondary" onclick="customMole.resetDefault()">🔄 Clear Custom Override</button>
             </div>
 
             <button class="btn gold" style="width:100%;" onclick="customMole.applyCustomMole()">💾 Save & Use Mole</button>
@@ -1551,6 +1653,7 @@
                     },
                     achievements: [],
                     customMoleUrl: null,
+                    selectedCharacter: 'hasina',
                     questsDate: '',
                     questsProgress: {}
                 };
@@ -1614,12 +1717,56 @@
                 this.activeMoleHoleIndex = null;
                 this.moleTimeout = null;
 
+                // Character Assets Setup
+                this.selectedCharacter = this.storage.data.selectedCharacter || 'hasina';
+                this.characterAssets = {
+                    hasina: { name: 'Sheikh Hasina', img: 'mole.png' },
+                    quader: { name: 'Obaidul Quader', img: 'Obaidul_Kader.png' },
+                    joy: { name: 'Sajeeb Wazed Joy', img: 'Sajeeb_Wazed.png' }
+                };
+
                 // Boss Battle State
                 this.bossActive = false;
                 this.bossMaxHp = 1000;
                 this.bossHp = 1000;
                 this.bossTimer = 30;
                 this.bossInterval = null;
+                this.bossCharacter = 'hasina';
+                this.bossData = {
+                    hasina: {
+                        title: '👑 SUPREME HASINA',
+                        img: 'mole.png',
+                        taunts: [
+                            "Apnara Shanto Hon!",
+                            "Ami Palabo Na!",
+                            "Shob Bondho Kore Dao!",
+                            "Kothao Jabo Na!",
+                            "Aro Jore Maro!"
+                        ]
+                    },
+                    quader: {
+                        title: '🕶️ OBAIDUL QUADER',
+                        img: 'Obaidul_Kader.png',
+                        taunts: [
+                            "Khela Hobe!",
+                            "Bissho Behayar Dol!",
+                            "Shob Road Clear!",
+                            "Shobai Shamne Ashun!",
+                            "Dourani Khaba!"
+                        ]
+                    },
+                    joy: {
+                        title: '💻 SAJEEB WAZED JOY',
+                        img: 'Sajeeb_Wazed.png',
+                        taunts: [
+                            "Digital Bangladesh!",
+                            "Internet Bondho Koro!",
+                            "Satellite 1 Hack Hobe Na!",
+                            "Facebook Block Koro!",
+                            "Cyber Team Ready!"
+                        ]
+                    }
+                };
 
                 this.initHoles();
                 this.initHammerMovement();
@@ -1637,7 +1784,7 @@
 
                     hole.innerHTML = `
                         <div class="mole-target" id="mole-${i}">
-                            <img src="${this.storage.data.customMoleUrl || 'mole.png'}" alt="Mole" id="mole-img-${i}">
+                            <img src="${this.getActiveMoleImage()}" alt="Mole" id="mole-img-${i}">
                         </div>
                         <img src="blood.png" alt="Splat" class="blood-splat" id="splat-${i}">
                         <div class="hole-base"></div>
@@ -1650,6 +1797,50 @@
 
                     arena.appendChild(hole);
                 }
+            }
+
+            getActiveMoleImage() {
+                if (this.storage.data.customMoleUrl) {
+                    return this.storage.data.customMoleUrl;
+                }
+                if (this.selectedCharacter === 'chaos') {
+                    const keys = ['hasina', 'quader', 'joy'];
+                    const chosen = keys[Math.floor(Math.random() * keys.length)];
+                    return this.characterAssets[chosen].img;
+                }
+                return this.characterAssets[this.selectedCharacter]?.img || 'mole.png';
+            }
+
+            setCharacter(charId, btn) {
+                this.selectedCharacter = charId;
+                this.storage.data.selectedCharacter = charId;
+                this.storage.save();
+                if (btn) {
+                    document.querySelectorAll('.char-card').forEach(c => c.classList.remove('active'));
+                    btn.classList.add('active');
+                }
+                if (charId !== 'chaos') {
+                    const activeImg = this.getActiveMoleImage();
+                    for (let i = 0; i < 9; i++) {
+                        const el = document.getElementById(`mole-img-${i}`);
+                        if (el) el.src = activeImg;
+                    }
+                }
+            }
+
+            selectBoss(bossId, btn) {
+                this.bossCharacter = bossId;
+                if (btn) {
+                    btn.parentElement.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                }
+                const data = this.bossData[bossId] || this.bossData.hasina;
+                const nameEl = document.getElementById('bossNameDisplay');
+                const avatarEl = document.getElementById('bossAvatarImg');
+                const bubbleEl = document.getElementById('bossTauntBubble');
+                if (nameEl) nameEl.textContent = data.title;
+                if (avatarEl) avatarEl.src = data.img;
+                if (bubbleEl) bubbleEl.textContent = data.taunts[0];
             }
 
             initHammerMovement() {
@@ -1813,6 +2004,12 @@
                     moleEl.dataset.moleType = 'bomb';
                 } else {
                     moleEl.dataset.moleType = 'normal';
+                }
+
+                // Update mole image if Chaos Trio or custom
+                const moleImg = moleEl.querySelector('img');
+                if (moleImg) {
+                    moleImg.src = this.getActiveMoleImage();
                 }
 
                 moleEl.classList.add('show');
@@ -2108,25 +2305,26 @@
                 this.bossHp = 1000;
                 this.bossTimer = 30;
 
+                const data = this.bossData[this.bossCharacter] || this.bossData.hasina;
+                const avatar = document.getElementById('bossAvatarImg');
+                const nameDisplay = document.getElementById('bossNameDisplay');
+                const bubble = document.getElementById('bossTauntBubble');
+                if (avatar) avatar.src = data.img;
+                if (nameDisplay) nameDisplay.textContent = data.title;
+                if (bubble) bubble.textContent = data.taunts[0];
+
                 this.updateBossUI();
                 this.sound.startMusic();
-
-                const taunts = [
-                    "Apnara Shanto Hon!",
-                    "Ami Palabo Na!",
-                    "Shob Bondho Kore Dao!",
-                    "Kothao Jabo Na!",
-                    "Aro Jore Maro!"
-                ];
 
                 if (this.bossInterval) clearInterval(this.bossInterval);
                 this.bossInterval = setInterval(() => {
                     this.bossTimer--;
                     document.getElementById('bossTimerDisplay').textContent = `${this.bossTimer}s`;
 
-                    if (this.bossTimer % 5 === 0) {
-                        const bubble = document.getElementById('bossTauntBubble');
-                        bubble.textContent = taunts[Math.floor(Math.random() * taunts.length)];
+                    if (this.bossTimer % 4 === 0) {
+                        const currentData = this.bossData[this.bossCharacter] || this.bossData.hasina;
+                        const bubbleEl = document.getElementById('bossTauntBubble');
+                        if (bubbleEl) bubbleEl.textContent = currentData.taunts[Math.floor(Math.random() * currentData.taunts.length)];
                     }
 
                     if (this.bossTimer <= 0) {
@@ -2517,14 +2715,22 @@
                 reader.readAsDataURL(file);
             }
 
-            setPreset(preset) {
-                this.tempDataUrl = 'mole.png';
-                this.previewImg.src = 'mole.png';
+            setPreset(presetPath) {
+                this.tempDataUrl = presetPath;
+                this.previewImg.src = presetPath;
             }
 
             resetDefault() {
-                this.tempDataUrl = 'mole.png';
-                this.previewImg.src = 'mole.png';
+                this.tempDataUrl = null;
+                this.game.storage.data.customMoleUrl = null;
+                this.game.storage.save();
+                this.previewImg.src = this.game.characterAssets[this.game.selectedCharacter]?.img || 'mole.png';
+                for (let i = 0; i < 9; i++) {
+                    const img = document.getElementById(`mole-img-${i}`);
+                    if (img) img.src = this.game.getActiveMoleImage();
+                }
+                alert('Cleared custom override! Now using selected character preset.');
+                if (window.ui) window.ui.closeModals();
             }
 
             applyCustomMole() {

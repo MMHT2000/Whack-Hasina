@@ -19,9 +19,16 @@
 
 ## 🚀 Game Features
 
-### 1. ⚔️ Game Modes
+### 1. 👥 Multi-Character Roster & Chaos Trio
+Choose your target directly from the Game Setup modal or Custom Mole Studio:
+- **👑 Sheikh Hasina** (`mole.png`) — The Supreme Leader.
+- **🕶️ Obaidul Quader** (`Obaidul_Kader.png`) — Khela Hobe!
+- **💻 Sajeeb Wazed Joy** (`Sajeeb_Wazed.png`) — Digital Prince.
+- **🎲 Chaos Trio Mode**: Randomly alternates between all 3 characters during the match!
+
+### 2. ⚔️ Game Modes
 - **Quick Play (Objective Mode)**: Play for 30, 60, or 100 points, or test your stamina in **Endless Frenzy**.
-- **👑 Boss Arena**: Battle Supreme Hasina in an interactive showdown! Rapid-slam the boss through humorous taunts (*"Apnara Shanto Hon!"*, *"Ami Palabo Na!"*) before the 30-second timer expires.
+- **👑 Boss Arena**: Select your Boss (Hasina, Quader, or Joy) and rapid-slam them against the clock with hilarious character-specific Bengali taunts!
 - **Daily Bounty Quests**: Complete daily goals to earn coin rewards and prestige XP.
 
 ### 2. 🔨 Hammer Armory & Cosmetics
