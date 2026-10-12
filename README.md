@@ -1,6 +1,6 @@
 # Whack-Hasina: Arcade Ultimate Edition 🔨
 
-![Whack-Hasina: Arcade Ultimate Edition](preview.png)
+![Whack-Hasina: Arcade Ultimate Edition](og-banner.jpg)
 
 > **Brutal Arcade Whack-a-Mole with Bengali Cultural Flavor, Boss Arenas, Armory, and Procedural Web Audio.**
 
