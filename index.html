@@ -80,7 +80,7 @@
             opacity: 0.35;
         }
 
-        /* Hammer Cursor */
+        /* Hammer Cursor & Armory Weapon Skins */
         .custom-hammer {
             position: fixed;
             width: 110px;
@@ -95,6 +95,56 @@
 
         .custom-hammer.slamming {
             transform: rotate(-65deg) scale(0.92);
+        }
+
+        /* Armory Skin 1: Default Wooden Mallet */
+        .custom-hammer.skin-default {
+            filter: drop-shadow(0 8px 16px rgba(0,0,0,0.6));
+        }
+
+        /* Armory Skin 2: Golden Mallet (+25% Coin Bonus) */
+        .custom-hammer.skin-golden {
+            filter: drop-shadow(0 0 16px #ffd166) drop-shadow(0 0 30px rgba(255,209,102,0.8)) sepia(1) hue-rotate(5deg) saturate(4) brightness(1.25);
+            animation: goldenWeaponGlow 1.8s infinite alternate ease-in-out;
+        }
+
+        /* Armory Skin 3: Cyber Mallet (High-Tech Neon) */
+        .custom-hammer.skin-cyber {
+            filter: drop-shadow(0 0 18px #00f0ff) drop-shadow(0 0 32px #ff007f) hue-rotate(185deg) saturate(4) brightness(1.3) contrast(1.2);
+            animation: cyberWeaponGlow 1.2s infinite alternate ease-in-out;
+        }
+
+        /* Armory Skin 4: Thunder Mjolnir (Electric Lightning) */
+        .custom-hammer.skin-mjolnir {
+            filter: drop-shadow(0 0 22px #4cc9f0) drop-shadow(0 0 40px #7209b7) invert(0.12) hue-rotate(210deg) saturate(3.5) brightness(1.3) contrast(1.4);
+            animation: mjolnirCrackle 0.8s infinite alternate ease-in-out;
+        }
+
+        /* Armory Skin 5: Justice Slipper (Bengali Choti / Sandal) */
+        .custom-hammer.skin-slipper {
+            width: 95px;
+            height: 115px;
+            transform-origin: 50% 85%;
+            filter: drop-shadow(0 8px 20px rgba(230, 57, 70, 0.7));
+        }
+
+        .custom-hammer.skin-slipper.slamming {
+            transform: rotate(-75deg) scale(1.08);
+        }
+
+        @keyframes goldenWeaponGlow {
+            0% { filter: drop-shadow(0 0 14px #ffd166) drop-shadow(0 0 25px rgba(255,209,102,0.6)) sepia(1) hue-rotate(5deg) saturate(3.5) brightness(1.2); }
+            100% { filter: drop-shadow(0 0 24px #ffd166) drop-shadow(0 0 45px rgba(255,209,102,0.95)) sepia(1) hue-rotate(5deg) saturate(5) brightness(1.4); }
+        }
+
+        @keyframes cyberWeaponGlow {
+            0% { filter: drop-shadow(0 0 16px #00f0ff) drop-shadow(0 0 28px #ff007f) hue-rotate(180deg) saturate(4) brightness(1.25); }
+            100% { filter: drop-shadow(0 0 24px #ff007f) drop-shadow(0 0 45px #00f0ff) hue-rotate(200deg) saturate(5) brightness(1.45); }
+        }
+
+        @keyframes mjolnirCrackle {
+            0% { filter: drop-shadow(0 0 18px #4cc9f0) drop-shadow(0 0 30px #7209b7) invert(0.12) hue-rotate(205deg) saturate(3) brightness(1.25); }
+            100% { filter: drop-shadow(0 0 30px #00f0ff) drop-shadow(0 0 50px #3a0ca3) invert(0.12) hue-rotate(225deg) saturate(4.5) brightness(1.5); }
         }
 
         /* Top Arcade Navigation / Header */
@@ -1183,6 +1233,10 @@
             </div>
 
             <div class="hud-cell">
+                <span class="hud-equipped-weapon" id="hudEquippedWeapon" style="font-size:11px; font-weight:700; color:var(--gold); white-space:nowrap; background:rgba(255,255,255,0.06); padding:4px 8px; border-radius:8px; border:1px solid var(--card-border);">🔨 Basic Mallet</span>
+            </div>
+
+            <div class="hud-cell">
                 <button class="btn secondary" id="pauseGameBtn" style="padding: 6px 12px; font-size: 11px;">⏸️ PAUSE</button>
             </div>
         </div>
@@ -1202,6 +1256,7 @@
             <div class="boss-health-card">
                 <div style="display:flex; justify-content:space-between; align-items:center; font-weight:800; margin-bottom:8px;">
                     <span id="bossNameDisplay" style="color:#ff2a5f; font-family:var(--font-retro); font-size:13px;">👑 SUPREME HASINA</span>
+                    <span class="hud-equipped-weapon" style="font-size:11px; font-weight:700; color:var(--gold); background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:6px; border:1px solid var(--card-border);">🔨 Basic Mallet</span>
                     <span id="bossTimerDisplay" style="color:var(--gold); font-family:var(--font-retro); font-size:14px;">30s</span>
                 </div>
                 <!-- Boss Selection Tabs -->
@@ -1746,6 +1801,12 @@
                     if (saved) {
                         const parsed = JSON.parse(saved);
                         this.data = { ...this.data, ...parsed };
+                        if (!Array.isArray(this.data.unlockedHammers) || !this.data.unlockedHammers.includes('default')) {
+                            this.data.unlockedHammers = ['default'];
+                        }
+                        if (!this.data.currentHammer) {
+                            this.data.currentHammer = 'default';
+                        }
                     }
                 } catch(e) {
                     console.error('Save loading error:', e);
@@ -1850,6 +1911,7 @@
 
                 this.initHoles();
                 this.initHammerMovement();
+                this.updateHammerSkin();
                 this.initQuests();
                 this.updateGlobalHUD();
             }
@@ -1992,6 +2054,38 @@
                 }, { once: true, passive: true });
             }
 
+            updateHammerSkin() {
+                const skin = this.storage.data.currentHammer || 'default';
+                const hammer = this.hammerEl;
+                if (!hammer) return;
+
+                // Remove previous skin classes
+                hammer.classList.remove('skin-default', 'skin-golden', 'skin-cyber', 'skin-mjolnir', 'skin-slipper');
+                hammer.classList.add(`skin-${skin}`);
+
+                // Slipper SVG data URL: A classic Bengali rubber sandal (চটি / স্যান্ডেল)
+                const SLIPPER_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 120' width='100' height='120'><ellipse cx='50' cy='62' rx='28' ry='50' fill='%2300b4d8' stroke='%23023e8a' stroke-width='4'/><ellipse cx='50' cy='62' rx='24' ry='44' fill='%2390e0ef'/><ellipse cx='50' cy='38' rx='20' ry='22' fill='%23caf0f8'/><path d='M30,35 Q50,60 50,85 Q50,60 70,35' fill='none' stroke='%23e63946' stroke-width='8' stroke-linecap='round'/><circle cx='50' cy='85' r='5' fill='%231d3557'/><path d='M32,32 L68,32' stroke='%23d62828' stroke-width='5' stroke-linecap='round'/></svg>";
+
+                if (skin === 'slipper') {
+                    hammer.src = SLIPPER_SVG;
+                } else {
+                    hammer.src = 'hammer.png';
+                }
+
+                // Update equipped weapon badge in HUDs
+                const weaponBadges = document.querySelectorAll('.hud-equipped-weapon');
+                const skinNames = {
+                    default: '🔨 Basic Mallet',
+                    golden: '🌟 Golden Mallet (+25% 🪙)',
+                    cyber: '⚡ Cyber Mallet',
+                    mjolnir: '⚡🔨 Thunder Mjolnir',
+                    slipper: '🩴 Justice Slipper'
+                };
+                weaponBadges.forEach(b => {
+                    b.textContent = skinNames[skin] || '🔨 Basic Mallet';
+                });
+            }
+
             setDifficulty(diff, btn) {
                 this.currentDifficulty = diff;
                 if (btn) {
@@ -2014,6 +2108,7 @@
                     window.ui.showScreen('screenGame');
                 }
                 this.hammerEl.style.display = 'block';
+                this.updateHammerSkin();
 
                 // Reset Match Data
                 this.score = 0;
@@ -2195,8 +2290,23 @@
                             setTimeout(() => splatEl.style.display = 'none', 450);
                         }
 
-                        // Particle Sparks
-                        this.spawnParticles(clickX, clickY, moleType === 'golden' ? '#ffd166' : '#ff2a5f');
+                        // Particle Sparks & Armory Weapon Special Effects
+                        if (currentSkin === 'golden') {
+                            this.spawnParticles(clickX, clickY, '#ffd166');
+                            this.spawnFloater(clickX, clickY - 20, '+25% 🪙 COIN BONUS!', '#ffd166');
+                        } else if (currentSkin === 'cyber') {
+                            this.spawnParticles(clickX, clickY, '#00f0ff');
+                            this.spawnParticles(clickX, clickY, '#ff007f');
+                        } else if (currentSkin === 'mjolnir') {
+                            this.spawnParticles(clickX, clickY, '#4cc9f0');
+                            document.body.classList.add('screen-shake');
+                            setTimeout(() => document.body.classList.remove('screen-shake'), 140);
+                        } else if (currentSkin === 'slipper') {
+                            this.spawnParticles(clickX, clickY, '#e63946');
+                            this.spawnFloater(clickX, clickY - 20, '🩴 SLAP!', '#ff4d6d');
+                        } else {
+                            this.spawnParticles(clickX, clickY, moleType === 'golden' ? '#ffd166' : '#ff2a5f');
+                        }
 
                         // Score Calculation
                         let basePoints = (moleType === 'golden') ? 5 : 1;
@@ -2409,6 +2519,7 @@
                     window.ui.showScreen('screenBoss');
                 }
                 this.hammerEl.style.display = 'block';
+                this.updateHammerSkin();
 
                 this.bossActive = true;
                 this.bossMaxHp = 1000;
@@ -2458,8 +2569,24 @@
                 const damage = damageMap[currentSkin] || 30;
                 this.bossHp = Math.max(0, this.bossHp - damage);
 
-                this.spawnFloater(event.clientX, event.clientY, `-${damage} HP!`, '#ff2a5f');
-                this.spawnParticles(event.clientX, event.clientY, '#ff2a5f');
+                const floaterColor = currentSkin === 'mjolnir' ? '#4cc9f0' : currentSkin === 'cyber' ? '#00f0ff' : currentSkin === 'golden' ? '#ffd166' : '#ff2a5f';
+                this.spawnFloater(event.clientX, event.clientY, `-${damage} HP!`, floaterColor);
+
+                if (currentSkin === 'mjolnir') {
+                    document.body.classList.add('screen-shake');
+                    setTimeout(() => document.body.classList.remove('screen-shake'), 140);
+                    this.spawnParticles(event.clientX, event.clientY, '#4cc9f0');
+                } else if (currentSkin === 'cyber') {
+                    this.spawnParticles(event.clientX, event.clientY, '#00f0ff');
+                    this.spawnParticles(event.clientX, event.clientY, '#ff007f');
+                } else if (currentSkin === 'golden') {
+                    this.spawnParticles(event.clientX, event.clientY, '#ffd166');
+                } else if (currentSkin === 'slipper') {
+                    this.spawnParticles(event.clientX, event.clientY, '#e63946');
+                    this.spawnFloater(event.clientX, event.clientY - 25, '🩴 SLAP!', '#ff4d6d');
+                } else {
+                    this.spawnParticles(event.clientX, event.clientY, '#ff2a5f');
+                }
 
                 this.updateBossUI();
 
@@ -2801,8 +2928,12 @@
             buyHammer(id, price) {
                 if (this.game.storage.data.coins >= price) {
                     this.game.storage.data.coins -= price;
-                    this.game.storage.data.unlockedHammers.push(id);
+                    if (!this.game.storage.data.unlockedHammers.includes(id)) {
+                        this.game.storage.data.unlockedHammers.push(id);
+                    }
                     this.game.storage.data.currentHammer = id;
+                    this.game.storage.save();
+                    this.game.updateHammerSkin();
                     this.game.sound.playGoldenChime();
                     this.game.updateGlobalHUD();
                     this.renderHammersTab();
@@ -2814,6 +2945,8 @@
             equipHammer(id) {
                 this.game.storage.data.currentHammer = id;
                 this.game.storage.save();
+                this.game.updateHammerSkin();
+                this.game.sound.playGoldenChime();
                 this.renderHammersTab();
             }
 
